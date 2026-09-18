@@ -153,6 +153,8 @@
   .callout.inline { position: static; max-width: 24em; padding: .7em 1.2em; }
   .code.compact { padding: clamp(14px, 1.6vw, 32px) clamp(14px, 2vw, 44px); }
   .code.compact pre { font-size: clamp(13px, 1.3vw, 24px); line-height: 1.45; }
+  .code.tiny { padding: clamp(12px, 1.4vw, 28px) clamp(14px, 1.8vw, 40px); }
+  .code.tiny pre { font-size: clamp(11px, 0.88vw, 16px); line-height: 1.38; }
   @media (max-width: 900px) {
     .cards.two { grid-template-columns: 1fr; }
     .deploy .node, .deploy .uparrow { align-self: center; }
@@ -386,6 +388,43 @@ export function GET() {
   <p style="text-align:center"><span class="pill">복사 버튼을 눌러 route.ts에 붙여넣으세요</span></p>
 </section>
 <!-- 멘트: 전부 합치면 이게 다입니다. 이 몇 줄이 완전한 API 하나예요. 오른쪽 위 복사 버튼으로 그대로 가져가서 쓰시면 됩니다. -->
+
+<!-- A-11b. 화면에서 불러오기 -->
+<section class="slide">
+  <h2>화면에서 불러오기 — <span class="mono k">page.tsx</span></h2>
+  <div class="code tiny">
+    <button class="copybtn" type="button" aria-label="코드 복사">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15 H4 a2 2 0 0 1 -2 -2 V4 a2 2 0 0 1 2 -2 h9 a2 2 0 0 1 2 2 v1"/></svg>
+      <span class="done-label">Copied!</span>
+    </button>
+    <pre><span class="c">// src/app/page.tsx</span>
+
+<span class="k">"use client"</span>;
+
+import { useEffect, useState } from "react";
+type Post = { id: number; title: string; contents: string };
+
+export default function Home() {
+  const [posts, setPosts] = useState&lt;Post[]&gt;([]);
+
+  <span class="k">useEffect</span>(() =&gt; {
+    <span class="k">fetch</span>("/api/posts")
+      .then((res) =&gt; res.json())
+      .then((data) =&gt; setPosts(data));
+  }, []);
+
+  return (
+    &lt;ul&gt;
+      {posts.map((post) =&gt; (
+        &lt;li key={post.id}&gt;{post.title}&lt;/li&gt;
+      ))}
+    &lt;/ul&gt;
+  );
+}</pre>
+  </div>
+  <p class="cap" style="text-align:center">읽기만 할 땐 <span class="mono">fetch("/api/posts")</span> 한 줄 — 화면이 처음 뜰 때 한 번 불러와(<span class="mono">useEffect</span>) 목록으로 그립니다</p>
+</section>
+<!-- 멘트: 방금 만든 GET API를 실제 화면에서 불러와 봅시다. 주소만 적은 fetch는 GET 요청이에요. 화면이 처음 뜰 때 한 번 불러오려고 useEffect를 쓰고, 받아온 배열을 useState에 담아 map으로 목록을 그립니다. onClick 같은 걸 쓰려면 맨 위에 "use client"가 반드시 있어야 해요. 복사해서 src/app/page.tsx에 통째로 붙여넣으면 바로 돌아갑니다. -->
 
 <!-- A-12. 직접 해보기 -->
 <section class="slide">
