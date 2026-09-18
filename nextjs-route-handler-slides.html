@@ -305,7 +305,9 @@
   <p class="eyebrow">STEP 1</p>
   <h2>함수를 내보내기</h2>
   <div class="fill">
-    <div class="code"><pre><span class="k">export</span> function</pre></div>
+    <div class="code"><pre><span class="c">// src/app/api/posts/route.ts</span>
+
+<span class="k">export</span> function</pre></div>
     <p class="body">route.ts 안의 함수는 우리가 직접 부르지 않습니다 — <b>Next.js가 가져다 실행</b>할 수 있게 export로 내보냅니다.</p>
   </div>
 </section>
@@ -316,7 +318,9 @@
   <p class="eyebrow">STEP 2</p>
   <h2>이름은 대문자 GET</h2>
   <div class="fill">
-    <div class="code"><pre><span class="dim">export function</span> <span class="k">GET</span>() {
+    <div class="code"><pre><span class="c">// src/app/api/posts/route.ts</span>
+
+<span class="dim">export function</span> <span class="k">GET</span>() {
 
 }</pre></div>
     <p class="body">이름이 곧 요청의 종류. 반드시 <b>대문자 GET</b> — <span class="mono warn">get</span>, <span class="mono warn">Get</span>은 동작하지 않아요.</p>
@@ -329,7 +333,9 @@
   <p class="eyebrow">STEP 3</p>
   <h2>답장할 데이터 준비</h2>
   <div class="fill">
-    <div class="code"><pre><span class="dim">export function GET() {</span>
+    <div class="code"><pre><span class="c">// src/app/api/posts/route.ts</span>
+
+<span class="dim">export function GET() {</span>
   const <span class="k">posts</span> = [
     { id: 1, title: "첫 글", contents: "안녕하세요!" },
     { id: 2, title: "둘째 글", contents: "반갑습니다!" },
@@ -345,7 +351,9 @@
   <p class="eyebrow">STEP 4</p>
   <h2>JSON으로 답장하기</h2>
   <div class="fill">
-    <div class="code"><pre><span class="dim">export function GET() {
+    <div class="code"><pre><span class="c">// src/app/api/posts/route.ts</span>
+
+<span class="dim">export function GET() {
   const posts = [
     { id: 1, title: "첫 글", contents: "안녕하세요!" },
     { id: 2, title: "둘째 글", contents: "반갑습니다!" },
@@ -365,7 +373,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15 H4 a2 2 0 0 1 -2 -2 V4 a2 2 0 0 1 2 -2 h9 a2 2 0 0 1 2 2 v1"/></svg>
       <span class="done-label">Copied!</span>
     </button>
-    <pre id="finalCode"><span class="c">// app/api/posts/route.ts</span>
+    <pre id="finalCode"><span class="c">// src/app/api/posts/route.ts</span>
 
 export function GET() {
   const posts = [
@@ -455,7 +463,9 @@ export function GET() {
   <h2>배열을 함수 밖으로</h2>
   <p class="callout">DB가 없어서 임시로 배열에 저장하는 방식이에요</p>
   <div class="fill">
-    <div class="code"><pre>const <span class="k">posts</span> = [
+    <div class="code"><pre><span class="c">// src/app/api/posts/route.ts</span>
+
+const <span class="k">posts</span> = [
   { id: 1, title: "첫 글", contents: "안녕하세요!" },
   { id: 2, title: "둘째 글", contents: "반갑습니다!" },
 ];
@@ -472,7 +482,9 @@ export function GET() {
   <p class="eyebrow">STEP 2</p>
   <h2>POST 함수 만들기</h2>
   <div class="fill">
-    <div class="code"><pre><span class="dim">const posts = [ ... ];
+    <div class="code"><pre><span class="c">// src/app/api/posts/route.ts</span>
+
+<span class="dim">const posts = [ ... ];
 
 export function GET() { ... }</span>
 
@@ -489,7 +501,9 @@ export <span class="k">async</span> function <span class="k">POST</span>(request
   <p class="eyebrow">STEP 3</p>
   <h2>보낸 데이터 꺼내기</h2>
   <div class="fill">
-    <div class="code"><pre><span class="dim">export async function POST(request: Request) {</span>
+    <div class="code"><pre><span class="c">// src/app/api/posts/route.ts</span>
+
+<span class="dim">export async function POST(request: Request) {</span>
   const data = <span class="k">await request.json()</span>;
 <span class="dim">}</span></pre></div>
     <p class="body">request는 화면이 보낸 택배 상자. <b>request.json()</b>으로 열어서 데이터를 꺼냅니다 — 다 열릴 때까지 await.</p>
@@ -503,7 +517,9 @@ export <span class="k">async</span> function <span class="k">POST</span>(request
   <h2>추가하고 답장하기</h2>
   <p class="callout">push 한 줄 = 실제 서비스에선 DB에 저장하는 코드가 올 자리</p>
   <div class="fill">
-    <div class="code"><pre><span class="dim">export async function POST(request: Request) {
+    <div class="code"><pre><span class="c">// src/app/api/posts/route.ts</span>
+
+<span class="dim">export async function POST(request: Request) {
   const data = await request.json();</span>
   posts.<span class="k">push</span>({ id: posts.length + 1, title: data.title, contents: data.contents });
   return Response.json(posts);
@@ -521,7 +537,7 @@ export <span class="k">async</span> function <span class="k">POST</span>(request
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15 H4 a2 2 0 0 1 -2 -2 V4 a2 2 0 0 1 2 -2 h9 a2 2 0 0 1 2 2 v1"/></svg>
       <span class="done-label">Copied!</span>
     </button>
-    <pre><span class="c">// app/api/posts/route.ts</span>
+    <pre><span class="c">// src/app/api/posts/route.ts</span>
 
 const posts = [
   { id: 1, title: "첫 글", contents: "안녕하세요!" },
@@ -545,18 +561,31 @@ export async function POST(request: Request) {
 <!-- B-9. 화면에서 부르기 -->
 <section class="slide">
   <h2>화면에서 부르기 — fetch</h2>
-  <div class="fill">
-    <div class="code"><pre><span class="c">// 클라이언트 컴포넌트, 버튼 onClick 같은 이벤트 함수 안에서</span>
-"use client";
+  <div class="code compact">
+    <button class="copybtn" type="button" aria-label="코드 복사">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15 H4 a2 2 0 0 1 -2 -2 V4 a2 2 0 0 1 2 -2 h9 a2 2 0 0 1 2 2 v1"/></svg>
+      <span class="done-label">Copied!</span>
+    </button>
+    <pre><span class="c">// src/app/page.tsx</span>
 
-await <span class="k">fetch</span>("/api/posts", {
-  method: <span class="k">"POST"</span>,
-  body: <span class="k">JSON.stringify</span>({ title: "셋째 글", contents: "잘 부탁해요!" }),
-});</pre></div>
-    <p class="body">주소 · method · body(보낼 데이터) 세 가지면 끝. 읽기만 할 땐 <span class="mono">fetch("/api/posts")</span> 한 줄입니다.</p>
+<span class="k">"use client"</span>;
+
+export default function Home() {
+  const handleClick = async () =&gt; {
+    const res = await <span class="k">fetch</span>("/api/posts", {
+      method: <span class="k">"POST"</span>,
+      body: <span class="k">JSON.stringify</span>({ title: "셋째 글", contents: "잘 부탁해요!" }),
+    });
+    const posts = await res.json();
+    console.log(posts);
+  };
+
+  return &lt;button <span class="k">onClick</span>={handleClick}&gt;글 추가하기&lt;/button&gt;;
+}</pre>
   </div>
+  <p class="cap" style="text-align:center">주소 · method · body 세 가지면 끝 — 읽기만 할 땐 <span class="mono">fetch("/api/posts")</span> 한 줄</p>
 </section>
-<!-- 멘트: 화면 쪽에서는 fetch로 주문을 넣습니다. 어디로(주소), 어떤 종류로(method), 뭘 들려서(body). body는 JSON.stringify로 포장해서 보내야 해요. 그냥 읽을 땐 method도 body도 없이 주소만 쓰면 GET이 됩니다. -->
+<!-- 멘트: 이번엔 화면 쪽 전체 코드입니다. 맨 위 "use client"가 있어야 onClick 같은 이벤트를 쓸 수 있어요. 버튼을 누르면 handleClick이 실행되고, 그 안에서 fetch로 주문을 넣습니다 — 어디로(주소), 어떤 종류로(method), 뭘 들려서(body). body는 JSON.stringify로 포장해서 보냅니다. 복사해서 page.tsx에 통째로 붙여넣고 버튼을 눌러보세요. -->
 
 <!-- B-10. 주의: 서버 컴포넌트에서 호출 금지 (클릭 진행) -->
 <section class="slide" data-manual>
