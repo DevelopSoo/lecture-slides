@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Next.js 강의</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@700;800&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+:root {
+  --bg: #000000;
+  --card: #141414;
+  --card-hover: #1d1d1d;
+  --line: #2e2e2e;
+  --text: #ffffff;
+  --soft: #d4d4d4;
+  --muted: #a3a3a3;
+  --accent: #FFC000;
+  --accent2: #ED7D31;
+  --blue: #00B0F0;
+
+  --font: 'Nanum Gothic', 'Malgun Gothic', sans-serif;
+  --mono: 'JetBrains Mono', 'Courier New', monospace;
+
+  --fs-display: clamp(28px, 3.2vw, 48px);
+  --fs-title:   clamp(17px, 1.3vw, 22px);
+  --fs-body:    clamp(13px, 0.95vw, 15px);
+  --fs-cap:     clamp(11px, 0.8vw, 13px);
+
+  --pad: clamp(20px, 3.5vw, 64px);
+  --gap: clamp(12px, 1.2vw, 20px);
+}
+
+* { box-sizing: border-box; margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: var(--font); font-weight: 800;
+  min-height: 100dvh; padding: var(--pad);
+  display: flex; flex-direction: column; justify-content: center;
+  gap: clamp(20px, 2.5vw, 40px);
+  word-break: keep-all;
+}
+
+header { display: flex; flex-direction: column; gap: 8px; }
+.eyebrow { font-size: var(--fs-cap); color: var(--accent); letter-spacing: .3em; }
+h1 { font-size: var(--fs-display); line-height: 1.15; }
+.k { color: var(--accent); }
+.lead { font-size: var(--fs-body); color: var(--muted); font-weight: 700; line-height: 1.6; }
+
+.list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--gap); }
+
+.item {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: clamp(16px, 1.5vw, 24px);
+  display: flex; flex-direction: column; gap: 8px;
+  text-decoration: none; color: inherit;
+  transition: background .2s ease, border-color .2s ease, transform .2s ease;
+}
+.item:hover, .item:focus-visible {
+  background: var(--card-hover); border-color: var(--accent);
+  transform: translateY(-2px); outline: none;
+}
+.item .n { font-family: var(--mono); font-size: var(--fs-cap); color: var(--accent); font-weight: 700; }
+.item h2 { font-size: var(--fs-title); line-height: 1.25; }
+.item p { font-size: var(--fs-body); color: var(--soft); font-weight: 700; line-height: 1.55; }
+.item .file { font-family: var(--mono); font-size: var(--fs-cap); color: var(--muted); font-weight: 400; margin-top: auto; padding-top: 4px; }
+.item .go { font-size: var(--fs-cap); color: var(--accent); letter-spacing: .1em; }
+
+footer { font-size: var(--fs-cap); color: var(--muted); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">SLIDES</p>
+  <h1>Next.js <span class="k">강의</span></h1>
+  <p class="lead">보고 싶은 주제를 선택하세요.</p>
+</header>
+
+<nav class="list">
+  <a class="item" href="nextjs-route-handler-slides.html">
+    <span class="n">01</span>
+    <h2>Route Handler</h2>
+    <p>Next.js 안에 나만의 API를 만들고 데이터를 주고받기.</p>
+    <span class="file">nextjs-route-handler-slides.html</span>
+    <span class="go">열기 →</span>
+  </a>
+
+  <a class="item" href="nextjs-proxy.html">
+    <span class="n">02</span>
+    <h2>Next.js proxy.ts</h2>
+    <p>페이지가 그려지기 전에 끼어들어 요청을 가로채는 방법.</p>
+    <span class="file">nextjs-proxy.html</span>
+    <span class="go">열기 →</span>
+  </a>
+
+  <a class="item" href="nextjs-server-actions.html">
+    <span class="n">03</span>
+    <h2>Server Actions</h2>
+    <p>클라이언트 컴포넌트에서 서버 함수를 직접 호출하고 에러까지 다루기.</p>
+    <span class="file">nextjs-server-actions.html</span>
+    <span class="go">열기 →</span>
+  </a>
+</nav>
+
+<footer>© Next.js 강의</footer>
+
+</body>
+</html>

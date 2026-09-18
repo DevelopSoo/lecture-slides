@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Next.js Route Handler — 나만의 API 만들기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@700;800&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+  :root {
+    /* 색상 */
+    --bg: #000000;
+    --card: #141414;
+    --line: #2e2e2e;
+    --text: #ffffff;
+    --soft: #d4d4d4;
+    --muted: #a3a3a3;
+    --accent: #FFC000;
+    --accent2: #ED7D31;
+    --blue: #00B0F0;
+    --red: #FF4D4D;
+    --callout-bg: #ffffff;
+    --callout-text: #141414;
+    --code-dim: #8a8a8a;
+    --comment: #7ec87e;
+
+    /* 글꼴 */
+    --font: 'Nanum Gothic', 'Malgun Gothic', sans-serif;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+
+    /* 글자 크기 */
+    --fs-display: clamp(40px, 6.25vw, 120px);
+    --fs-h2:      clamp(30px, 3.75vw, 72px);
+    --fs-state:   clamp(24px, 2.9vw, 56px);
+    --fs-body:    clamp(20px, 2.3vw, 44px);
+    --fs-code:    clamp(15px, 1.9vw, 36px);
+    --fs-cap:     clamp(14px, 1.45vw, 28px);
+
+    /* 여백·형태 */
+    --pad: clamp(24px, 6.67vw, 128px);
+    --gap: clamp(16px, 2.5vw, 48px);
+    --radius-card: 20px;
+    --radius-callout: 24px;
+    --radius-pill: 999px;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-weight: 800; }
+
+  .slide {
+    min-height: 100dvh; scroll-snap-align: start;
+    padding: var(--pad); display: flex; flex-direction: column; gap: var(--gap);
+    position: relative; word-break: keep-all;
+  }
+  .slide--center { justify-content: center; align-items: center; text-align: center; }
+
+  .eyebrow { font-size: var(--fs-cap); color: var(--accent); letter-spacing: .3em; }
+  h1 { font-size: var(--fs-display); line-height: 1.15; }
+  h2 { font-size: var(--fs-h2); line-height: 1.1; }
+  .state { font-size: var(--fs-state); line-height: 1.3; }
+  .body  { font-size: var(--fs-body); line-height: 1.5; color: var(--soft); font-weight: 700; }
+  .cap   { font-size: var(--fs-cap); color: var(--muted); font-weight: 700; }
+  .k     { color: var(--accent); }
+  .mono  { font-family: var(--mono); }
+  .warn  { color: var(--red); }
+  .fill  { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: var(--gap); }
+
+  /* 카드 3개 */
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }
+  .card  { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card);
+           padding: clamp(20px, 2.5vw, 48px); display: flex; flex-direction: column;
+           align-items: center; text-align: center; gap: 12px; }
+  .card .n { font-size: var(--fs-state); color: var(--accent); }
+  .card svg { width: clamp(40px, 4vw, 80px); height: auto; }
+
+  /* 코드 박스 */
+  .code { background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+          padding: clamp(16px, 2.5vw, 48px) clamp(16px, 3vw, 60px); overflow-x: auto;
+          position: relative; }
+  .code pre { font-family: var(--mono); font-size: var(--fs-code); line-height: 1.6; font-weight: 400; white-space: pre; }
+  .code .dim { color: var(--code-dim); }
+  .code .c   { color: var(--comment); }
+
+  /* 복사 버튼 (완성 코드) */
+  .copybtn { position: absolute; top: clamp(10px, 1.2vw, 22px); right: clamp(10px, 1.2vw, 22px);
+             display: inline-flex; align-items: center; gap: .45em;
+             background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+             color: var(--soft); font-family: var(--font); font-weight: 700; font-size: var(--fs-cap);
+             padding: .45em .75em; cursor: pointer; }
+  .copybtn svg { width: 1.1em; height: 1.1em; }
+  .copybtn .done-label { display: none; }
+  .copybtn.done { border-color: var(--accent); color: var(--accent); }
+  .copybtn.done svg { display: none; }
+  .copybtn.done .done-label { display: inline; }
+
+  /* 말풍선 팁 */
+  .callout { background: var(--callout-bg); color: var(--callout-text); border-radius: var(--radius-callout);
+             padding: clamp(14px, 1.8vw, 36px) clamp(18px, 2vw, 40px); font-size: var(--fs-cap); line-height: 1.5;
+             position: absolute; right: var(--pad); top: calc(var(--pad) + 1em); max-width: 26em; }
+
+  .pill { display: inline-block; background: var(--accent); color: var(--callout-text);
+          padding: .7em 1.8em; border-radius: var(--radius-pill); font-size: var(--fs-cap); }
+
+  /* 정리 표 */
+  .rows { flex: 1; display: flex; flex-direction: column; }
+  .row  { flex: 1; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); align-items: center; gap: var(--gap); }
+  .row + .row { border-top: 1px solid var(--line); }
+  .row .key { font-size: var(--fs-body); color: var(--accent); }
+  .row .key.mono { font-family: var(--mono); }
+
+  /* ── 이 강의 전용: 파일 → 주소 흐름 다이어그램 ── */
+  .flow { display: flex; align-items: center; gap: var(--gap); }
+  .filecard { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card);
+              padding: .55em 1em; font-family: var(--mono); font-size: var(--fs-body); font-weight: 700; }
+  .filecard small { display: block; font-family: var(--font); font-size: var(--fs-cap); color: var(--muted); margin-top: .3em; }
+  .urlpill { border: 2px solid var(--accent); color: var(--accent); border-radius: var(--radius-pill);
+             padding: .45em 1.1em; font-family: var(--mono); font-size: var(--fs-body); font-weight: 700; white-space: nowrap; }
+  .urlpill.err { border-color: var(--red); color: var(--red); }
+  .flow .arrow { flex: none; width: clamp(36px, 4vw, 80px); }
+  .bad { border: 2px solid var(--red); color: var(--red); border-radius: var(--radius-card);
+         padding: .7em 1.1em; font-size: var(--fs-body); line-height: 1.4; }
+  .good { border: 2px solid var(--accent); color: var(--accent); border-radius: var(--radius-card);
+          padding: .7em 1.1em; font-size: var(--fs-body); line-height: 1.4; }
+
+  /* 브라우저 목업 */
+  .browser { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .browser .bar { display: flex; gap: 8px; align-items: center; padding: clamp(10px,1vw,20px) clamp(12px,1.4vw,28px);
+                  border-bottom: 1px solid var(--line); }
+  .browser .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--line); flex: none; }
+  .browser .url { flex: 1; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-pill);
+                  padding: .35em 1em; font-family: var(--mono); font-size: var(--fs-cap); color: var(--soft);
+                  overflow-x: auto; white-space: nowrap; }
+  .browser .view { padding: clamp(16px, 2.5vw, 48px) clamp(16px, 3vw, 60px); overflow-x: auto; }
+  .browser .view pre { font-family: var(--mono); font-size: var(--fs-code); line-height: 1.6; font-weight: 400; white-space: pre; }
+
+  /* ── 강의 B 전용 ── */
+  .cards.two { grid-template-columns: repeat(2, 1fr); }
+  .deploy { display: flex; flex-direction: column; align-items: center;
+            justify-content: flex-start; gap: clamp(10px, 1.2vw, 22px); }
+  .node { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card);
+          padding: clamp(14px, 1.5vw, 28px); width: min(100%, 36em);
+          display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+  .code-mini { font-family: var(--mono); font-size: var(--fs-cap); font-weight: 700;
+               background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+               padding: .5em 1em; color: var(--soft); }
+  .err-mini { font-size: var(--fs-cap); color: var(--red); border: 1px solid var(--red);
+              border-radius: 10px; padding: .5em 1em; }
+  .deploy .node, .deploy .uparrow { align-self: flex-start; }
+  .uparrow { display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: .8em; }
+  .uparrow svg { width: clamp(20px, 1.8vw, 32px); height: auto;
+                 /* 화살표를 위·아래 박스(폭 36em)의 가로 중앙에 맞춤 */
+                 margin-left: calc(18em - clamp(20px, 1.8vw, 32px) / 2); }
+  .callout.inline { position: static; max-width: 24em; padding: .7em 1.2em; }
+  .code.compact { padding: clamp(14px, 1.6vw, 32px) clamp(14px, 2vw, 44px); }
+  .code.compact pre { font-size: clamp(13px, 1.3vw, 24px); line-height: 1.45; }
+  @media (max-width: 900px) {
+    .cards.two { grid-template-columns: 1fr; }
+    .deploy .node, .deploy .uparrow { align-self: center; }
+    .uparrow { justify-content: center; }
+    .uparrow svg { margin-left: 0; }
+  }
+
+  /* 애니메이션 */
+  .reveal { opacity: 0; transform: translateY(24px);
+            transition: opacity .5s ease, transform .5s ease;
+            transition-delay: calc(var(--i, 0) * .35s); }
+  .reveal.pop { transform: scale(.8); }
+  .slide.in .reveal, .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { transition: none; opacity: 1; transform: none; }
+  }
+
+  /* 반응형 분기 */
+  @media (max-width: 900px) {
+    .cards { grid-template-columns: 1fr; }
+    .callout { position: static; max-width: none; }
+    .row { grid-template-columns: 1fr; gap: 8px; padding: 16px 0; }
+    .slide { min-height: auto; padding-top: 56px; padding-bottom: 56px; }
+    .flow { flex-direction: column; align-items: stretch; text-align: center; }
+    .flow .arrow { align-self: center; transform: rotate(90deg); }
+    .urlpill { align-self: center; }
+  }
+  @media (max-width: 480px) {
+    html { scroll-snap-type: none; }
+  }
+
+/* 목록으로 돌아가기 (표지 전용) */
+.home-btn {
+  position: absolute; top: clamp(16px, 2.2vw, 40px); left: clamp(16px, 2.2vw, 40px);
+  z-index: 10; display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--card); color: var(--muted); text-decoration: none;
+  font-family: var(--font); font-weight: 700; font-size: clamp(12px, 1.1vw, 16px);
+  line-height: 1; transition: color .2s ease, border-color .2s ease;
+}
+.home-btn:hover, .home-btn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ 강의 A · Route Handler와 GET ═══════════════════ -->
+
+<!-- A-1. 표지 -->
+<section class="slide slide--center">
+  <a class="home-btn" href="index.html">← 목록</a>
+  <p class="eyebrow reveal">NEXT.JS 기초</p>
+  <h1 class="reveal" style="--i:1">Next.js 안에<br>나만의 <span class="k">API</span> 만들기</h1>
+  <p class="cap reveal" style="--i:2">Route Handler — route.ts 파일 하나면 됩니다</p>
+</section>
+<!-- 멘트: 지금까지는 화면(page.tsx)을 만들었죠. 오늘은 화면이 아니라, 데이터를 주고받는 창구인 API를 직접 만들어봅니다. 파일 하나면 돼요. -->
+
+<!-- A-2. 규칙 ①: 파일 이름과 위치 -->
+<section class="slide">
+  <h2>규칙 ① 파일 이름과 위치</h2>
+  <p class="state"><span class="k">app</span> 폴더 안에, 이름은 정확히 <span class="mono k">route.ts</span></p>
+  <div class="fill">
+    <div class="code reveal"><pre>app/
+ └ api/
+    └ hello/
+       └ <span class="k">route.ts</span>   <span class="c">← 이 파일이 API가 됩니다</span></pre></div>
+    <p class="body reveal" style="--i:1">Next.js는 <b>app 폴더 안</b>의 <b>route.ts라는 이름</b>만 API로 인식합니다.</p>
+  </div>
+</section>
+<!-- 멘트: page.tsx를 만들면 화면이 생기듯, route.ts를 만들면 API가 생깁니다. 단, 반드시 app 폴더 안이어야 하고, 파일 이름 철자가 한 글자라도 다르면(routes.ts, Route.ts) 그냥 평범한 파일입니다. -->
+
+<!-- A-3. 규칙 ②: 폴더 위치 = API 주소 (클릭 진행) -->
+<section class="slide" data-manual>
+  <h2>규칙 ② 폴더 위치 = API 주소</h2>
+  <div class="fill">
+    <div class="flow">
+      <p class="filecard">app/<b class="k">api</b>/route.ts</p>
+      <svg class="arrow" viewBox="0 0 60 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 H52 M44 4 L52 12 L44 20"/></svg>
+      <p class="urlpill">/api</p>
+    </div>
+    <div class="flow reveal">
+      <p class="filecard">app/<b class="k">api</b>/<b class="k">hello</b>/route.ts</p>
+      <svg class="arrow" viewBox="0 0 60 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 H52 M44 4 L52 12 L44 20"/></svg>
+      <p class="urlpill">/api/hello</p>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 폴더 위치가 곧 API 주소입니다. app/api 안에 route.ts를 만들면 주소는 /api. (클릭) 폴더를 하나 더 파면? 그 폴더 이름만큼 주소가 깊어집니다. app/api/hello면 /api/hello. -->
+
+<!-- A-4. 주소가 겹치면? (클릭 진행) -->
+<section class="slide" data-manual>
+  <h2>주소가 겹치면?</h2>
+  <p class="state">한 폴더에 <span class="mono k">page.tsx</span>와 <span class="mono k">route.ts</span>를 같이 두면</p>
+  <div class="fill">
+    <div class="flow reveal">
+      <p class="filecard">app/page.tsx<small>화면</small></p>
+      <svg class="arrow" viewBox="0 0 60 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 H52 M44 4 L52 12 L44 20"/></svg>
+      <p class="urlpill">/</p>
+    </div>
+    <div class="flow reveal">
+      <p class="filecard">app/route.ts<small>API</small></p>
+      <svg class="arrow" viewBox="0 0 60 24" fill="none" stroke="var(--red)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 H52 M44 4 L52 12 L44 20"/></svg>
+      <p class="urlpill err">/</p>
+    </div>
+    <p class="bad reveal">같은 주소 <b>/</b> 를 두고 화면과 API가 충돌 — 에러가 납니다</p>
+  </div>
+</section>
+<!-- 멘트: (한 단계씩 보여주며) 화면도 주소가 / , API도 주소가 / . 누가 이 주소의 주인일까요? Next.js는 결정을 못 하고 에러를 냅니다. 한 주소에는 화면이든 API든 하나만 살 수 있어요. -->
+
+<!-- A-5. 해결: api 폴더 (클릭 진행) -->
+<section class="slide" data-manual>
+  <h2>해결 — api 폴더</h2>
+  <p class="callout">관례: API 파일은 전부 app/api 폴더 아래에 모아두세요</p>
+  <p class="state"><span class="mono k">route.ts</span>는 <span class="mono k">api</span> 폴더로 구분</p>
+  <div class="fill">
+    <div class="flow">
+      <p class="filecard">app/posts/page.tsx<small>화면</small></p>
+      <svg class="arrow" viewBox="0 0 60 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 H52 M44 4 L52 12 L44 20"/></svg>
+      <p class="urlpill">/posts</p>
+    </div>
+    <div class="flow reveal">
+      <p class="filecard">app/api/posts/route.ts<small>API</small></p>
+      <svg class="arrow" viewBox="0 0 60 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 H52 M44 4 L52 12 L44 20"/></svg>
+      <p class="urlpill">/api/posts</p>
+    </div>
+    <p class="good reveal">주소가 달라졌으니 안전 — 화면 따로, API 따로</p>
+  </div>
+</section>
+<!-- 멘트: 같은 posts라도, 화면은 app/posts에 두면 /posts. (클릭) API는 api 폴더 아래 app/api/posts에 두면 /api/posts. (클릭) api 폴더 하나로 주소가 갈라지니 절대 안 겹칩니다. 그래서 전 세계 Next.js 개발자들이 API를 app/api 아래에 모아둡니다. -->
+
+<!-- A-6. API 생성 연습하기 (클릭 시 응답 등장) -->
+<section class="slide" data-manual>
+  <h2>API 생성 연습하기</h2>
+  <div class="fill">
+    <div class="browser">
+      <div class="bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <p class="url">localhost:3000/api/posts</p>
+      </div>
+      <div class="view reveal"><pre>[
+  { <span class="k">"id"</span>: 1, <span class="k">"title"</span>: "첫 글", <span class="k">"contents"</span>: "안녕하세요!" },
+  { "id": 2, "title": "둘째 글", "contents": "반갑습니다!" }
+]</pre></div>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 오늘의 연습입니다. /api/posts를 호출하면 — (클릭) 게시물 2개가 배열로 돌아옵니다. 각 게시물은 id, title, contents 세 가지를 갖고 있어요. 지금부터 이 API를 한 조각씩 만들어봅니다. -->
+
+<!-- A-7. STEP 1 -->
+<section class="slide">
+  <p class="eyebrow">STEP 1</p>
+  <h2>함수를 내보내기</h2>
+  <div class="fill">
+    <div class="code"><pre><span class="k">export</span> function</pre></div>
+    <p class="body">route.ts 안의 함수는 우리가 직접 부르지 않습니다 — <b>Next.js가 가져다 실행</b>할 수 있게 export로 내보냅니다.</p>
+  </div>
+</section>
+<!-- 멘트: 코드는 한 번에 다 쓰지 않고 한 조각씩 갑니다. 첫 조각은 export function. "함수를 만들 건데, Next.js 네가 가져다 써" 라는 뜻입니다. -->
+
+<!-- A-8. STEP 2 -->
+<section class="slide">
+  <p class="eyebrow">STEP 2</p>
+  <h2>이름은 대문자 GET</h2>
+  <div class="fill">
+    <div class="code"><pre><span class="dim">export function</span> <span class="k">GET</span>() {
+
+}</pre></div>
+    <p class="body">이름이 곧 요청의 종류. 반드시 <b>대문자 GET</b> — <span class="mono warn">get</span>, <span class="mono warn">Get</span>은 동작하지 않아요.</p>
+  </div>
+</section>
+<!-- 멘트: 함수 이름을 우리가 짓는 게 아니라, 약속된 이름 GET을 씁니다. 브라우저 주소창에 주소를 치는 행동이 바로 GET 요청이에요. 대소문자 틀리면 Next.js가 못 알아보니 조심. -->
+
+<!-- A-9. STEP 3 -->
+<section class="slide">
+  <p class="eyebrow">STEP 3</p>
+  <h2>답장할 데이터 준비</h2>
+  <div class="fill">
+    <div class="code"><pre><span class="dim">export function GET() {</span>
+  const <span class="k">posts</span> = [
+    { id: 1, title: "첫 글", contents: "안녕하세요!" },
+    { id: 2, title: "둘째 글", contents: "반갑습니다!" },
+  ];
+<span class="dim">}</span></pre></div>
+    <p class="body">답장으로 보낼 게시물 2개를 배열 <b>[ ]</b> 로 준비 — id · title · contents</p>
+  </div>
+</section>
+<!-- 멘트: 답장할 내용부터 준비합니다. 게시물 2개를 배열에 담았어요. 나중에 DB를 배우면 이 자리가 DB에서 꺼낸 데이터로 바뀝니다. 지금은 손으로 만든 데이터면 충분해요. -->
+
+<!-- A-10. STEP 4 -->
+<section class="slide">
+  <p class="eyebrow">STEP 4</p>
+  <h2>JSON으로 답장하기</h2>
+  <div class="fill">
+    <div class="code"><pre><span class="dim">export function GET() {
+  const posts = [
+    { id: 1, title: "첫 글", contents: "안녕하세요!" },
+    { id: 2, title: "둘째 글", contents: "반갑습니다!" },
+  ];</span>
+  return <span class="k">Response.json</span>(posts);
+<span class="dim">}</span></pre></div>
+    <p class="body">return이 곧 답장. <b>Response.json(posts)</b> — posts 배열이 그대로 JSON으로 나갑니다.</p>
+  </div>
+</section>
+<!-- 멘트: 마지막 조각, 답장입니다. return Response.json(posts) 한 줄이면 아까 본 그 JSON 배열이 요청한 쪽으로 나갑니다. -->
+
+<!-- A-11. 완성 코드 -->
+<section class="slide">
+  <h2>완성 코드</h2>
+  <div class="code">
+    <button class="copybtn" type="button" aria-label="코드 복사">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15 H4 a2 2 0 0 1 -2 -2 V4 a2 2 0 0 1 2 -2 h9 a2 2 0 0 1 2 2 v1"/></svg>
+      <span class="done-label">Copied!</span>
+    </button>
+    <pre id="finalCode"><span class="c">// app/api/posts/route.ts</span>
+
+export function GET() {
+  const posts = [
+    { id: 1, title: "첫 글", contents: "안녕하세요!" },
+    { id: 2, title: "둘째 글", contents: "반갑습니다!" },
+  ];
+  return Response.json(posts);
+}</pre>
+  </div>
+  <p style="text-align:center"><span class="pill">복사 버튼을 눌러 route.ts에 붙여넣으세요</span></p>
+</section>
+<!-- 멘트: 전부 합치면 이게 다입니다. 이 몇 줄이 완전한 API 하나예요. 오른쪽 위 복사 버튼으로 그대로 가져가서 쓰시면 됩니다. -->
+
+<!-- A-12. 직접 해보기 -->
+<section class="slide">
+  <h2>직접 해보기</h2>
+  <div class="cards fill">
+    <div class="card reveal" style="--i:0"><p class="n">1</p><p class="body">폴더·파일 만들기</p><p class="cap mono">app/api/posts/route.ts</p></div>
+    <div class="card reveal" style="--i:1"><p class="n">2</p><p class="body">붙여넣고 저장</p><p class="cap">npm run dev 켜진 상태에서</p></div>
+    <div class="card reveal" style="--i:2"><p class="n">3</p><p class="body">주소창 입력!</p><p class="cap mono">localhost:3000/api/posts</p></div>
+  </div>
+  <p class="callout reveal" style="--i:3; position:static">404가 뜨면? 파일 이름 철자(route.ts)와 폴더 위치부터 확인!</p>
+</section>
+<!-- 멘트: 지금부터 5분 드릴게요, 직접 해봅시다. 게시물 2개가 화면에 나오면 성공. 안 되는 분 대부분은 파일 이름 오타이거나 api 폴더 밖에 만든 경우입니다. -->
+
+<!-- A-13. 정리 -->
+<section class="slide">
+  <h2>오늘의 정리</h2>
+  <div class="rows">
+    <div class="row"><p class="key mono">route.ts</p><p class="body">app 폴더 안에 만들면 API가 되는 특별한 파일</p></div>
+    <div class="row"><p class="key">폴더 위치 = API 주소</p><p class="body">app/api/posts → /api/posts — 화면(page.tsx)과 주소가 겹치면 안 됨</p></div>
+    <div class="row"><p class="key mono">GET</p><p class="body">대문자로 내보내면 "데이터 주세요" 요청을 처리</p></div>
+  </div>
+</section>
+<!-- 멘트: 세 가지만 기억하세요. route.ts라는 이름, 폴더 위치가 곧 API 주소라는 것, 그리고 대문자 GET. 다음 시간에는 데이터를 "보내는" POST와, 화면에서 이 API를 부르는 법을 배웁니다. -->
+
+
+<!-- ═══════════════════ 강의 B · POST와 화면 연결 ═══════════════════ -->
+
+<!-- B-1. 챕터 표지 -->
+<section class="slide slide--center">
+  <h1 class="reveal">데이터 <span class="k">보내기</span> — POST</h1>
+  <p class="cap reveal" style="--i:1">받기(GET) 다음은 보내기 — 그리고 화면과 연결하기</p>
+</section>
+<!-- 멘트: 지난 시간엔 데이터를 "받는" API를 만들었죠. 이번엔 거꾸로, 화면에서 서버로 데이터를 "보내는" POST를 만들고, 화면 코드에서 이 API를 부르는 법까지 연결합니다. -->
+
+<!-- B-2. 개념: 요청의 두 방향 -->
+<section class="slide">
+  <h2>요청의 두 방향</h2>
+  <p class="state">받기는 <span class="k">GET</span>, 보내기는 <span class="k">POST</span></p>
+  <div class="cards two fill">
+    <div class="card reveal" style="--i:0">
+      <svg viewBox="0 0 64 64" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M32 8 V38 M20 26 L32 38 L44 26"/><path d="M10 46 v8 h44 v-8"/></svg>
+      <p class="body">GET — 주세요</p>
+      <p class="cap">데이터 받기 · 주소창에 치는 게 GET</p>
+    </div>
+    <div class="card reveal" style="--i:1">
+      <svg viewBox="0 0 64 64" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M32 40 V10 M20 22 L32 10 L44 22"/><path d="M10 46 v8 h44 v-8"/></svg>
+      <p class="body">POST — 받아주세요</p>
+      <p class="cap">데이터 보내기 · 주소창으론 못 보냄</p>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 요청에는 방향이 있습니다. 지난 시간의 GET은 "데이터 주세요". 오늘의 POST는 "이 데이터 받아주세요". 주소창에 주소를 치는 건 전부 GET이라서, POST는 코드로만 보낼 수 있어요. -->
+
+<!-- B-3. POST 연습하기 (클릭 진행) -->
+<section class="slide" data-manual>
+  <h2>POST 연습하기</h2>
+  <div class="fill">
+    <div class="flow">
+      <p class="filecard">{ title: "셋째 글",<br>&nbsp;&nbsp;contents: "잘 부탁해요!" }<small>화면이 보내는 데이터</small></p>
+      <svg class="arrow reveal" viewBox="0 0 60 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 H52 M44 4 L52 12 L44 20"/></svg>
+      <p class="urlpill reveal">POST /api/posts</p>
+    </div>
+    <div class="code reveal"><pre>[
+  <span class="dim">{ "id": 1, "title": "첫 글", "contents": "안녕하세요!" },
+  { "id": 2, "title": "둘째 글", "contents": "반갑습니다!" },</span>
+  <span class="k">{ "id": 3, "title": "셋째 글", "contents": "잘 부탁해요!" }</span>
+]</pre></div>
+  </div>
+</section>
+<!-- 멘트: 오늘의 연습입니다. 화면이 새 글 데이터를 들고 (클릭) POST로 /api/posts에 보내면 (클릭) 목록 끝에 셋째 글이 추가되어 돌아옵니다. (클릭) 이 API를 한 조각씩 만들어봅시다. -->
+
+<!-- B-4. STEP 1 -->
+<section class="slide">
+  <p class="eyebrow">STEP 1</p>
+  <h2>배열을 함수 밖으로</h2>
+  <p class="callout">DB가 없어서 임시로 배열에 저장하는 방식이에요</p>
+  <div class="fill">
+    <div class="code"><pre>const <span class="k">posts</span> = [
+  { id: 1, title: "첫 글", contents: "안녕하세요!" },
+  { id: 2, title: "둘째 글", contents: "반갑습니다!" },
+];
+
+<span class="dim">export function GET() {
+  return Response.json(posts);
+}</span></pre></div>
+  </div>
+</section>
+<!-- 멘트: 지난 시간엔 posts 배열이 GET 안에 있었죠. 이제 POST도 이 배열에 글을 추가해야 하니, 둘 다 볼 수 있게 함수 밖으로 꺼냅니다. -->
+
+<!-- B-5. STEP 2 -->
+<section class="slide">
+  <p class="eyebrow">STEP 2</p>
+  <h2>POST 함수 만들기</h2>
+  <div class="fill">
+    <div class="code"><pre><span class="dim">const posts = [ ... ];
+
+export function GET() { ... }</span>
+
+export <span class="k">async</span> function <span class="k">POST</span>(request: Request) {
+
+}</pre></div>
+    <p class="body">이름은 반드시 <b>대문자 POST</b>. 안에서 기다릴 일이 생기므로 async를 붙입니다.</p>
+  </div>
+</section>
+<!-- 멘트: GET 아래에 POST 함수를 추가합니다. 이름 규칙은 GET 때와 똑같이 대문자. 이번엔 화면이 보낸 데이터가 도착할 때까지 기다릴 일이 있어서 async가 붙고, 그 데이터가 담긴 request를 받습니다. -->
+
+<!-- B-6. STEP 3 -->
+<section class="slide">
+  <p class="eyebrow">STEP 3</p>
+  <h2>보낸 데이터 꺼내기</h2>
+  <div class="fill">
+    <div class="code"><pre><span class="dim">export async function POST(request: Request) {</span>
+  const data = <span class="k">await request.json()</span>;
+<span class="dim">}</span></pre></div>
+    <p class="body">request는 화면이 보낸 택배 상자. <b>request.json()</b>으로 열어서 데이터를 꺼냅니다 — 다 열릴 때까지 await.</p>
+  </div>
+</section>
+<!-- 멘트: request 안에 화면이 보낸 { title, contents }가 포장되어 들어 있습니다. request.json()으로 포장을 뜯는데, 뜯는 데 시간이 걸릴 수 있어서 앞에 await를 붙여 기다립니다. -->
+
+<!-- B-7. STEP 4 -->
+<section class="slide">
+  <p class="eyebrow">STEP 4</p>
+  <h2>추가하고 답장하기</h2>
+  <p class="callout">push 한 줄 = 실제 서비스에선 DB에 저장하는 코드가 올 자리</p>
+  <div class="fill">
+    <div class="code"><pre><span class="dim">export async function POST(request: Request) {
+  const data = await request.json();</span>
+  posts.<span class="k">push</span>({ id: posts.length + 1, title: data.title, contents: data.contents });
+  return Response.json(posts);
+<span class="dim">}</span></pre></div>
+    <p class="body"><b>push</b>로 배열 끝에 새 게시물을 추가하고, 달라진 posts를 그대로 답장합니다.</p>
+  </div>
+</section>
+<!-- 멘트: 꺼낸 데이터로 새 게시물을 만들어 push로 배열 끝에 붙입니다. id는 "지금 개수 + 1"로 자동 계산. 답장은 GET 때 배운 그대로 Response.json입니다. -->
+
+<!-- B-8. 완성 코드 -->
+<section class="slide">
+  <h2>완성 코드 — GET + POST</h2>
+  <div class="code compact">
+    <button class="copybtn" type="button" aria-label="코드 복사">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15 H4 a2 2 0 0 1 -2 -2 V4 a2 2 0 0 1 2 -2 h9 a2 2 0 0 1 2 2 v1"/></svg>
+      <span class="done-label">Copied!</span>
+    </button>
+    <pre><span class="c">// app/api/posts/route.ts</span>
+
+const posts = [
+  { id: 1, title: "첫 글", contents: "안녕하세요!" },
+  { id: 2, title: "둘째 글", contents: "반갑습니다!" },
+];
+
+export function GET() {
+  return Response.json(posts);
+}
+
+export async function POST(request: Request) {
+  const data = await request.json();
+  posts.push({ id: posts.length + 1, title: data.title, contents: data.contents });
+  return Response.json(posts);
+}</pre>
+  </div>
+  <p style="text-align:center"><span class="pill">복사 버튼을 눌러 route.ts 전체를 교체하세요</span></p>
+</section>
+<!-- 멘트: 지난 시간 코드와 합친 전체입니다. 위쪽 절반은 지난 시간 그대로, 아래 POST만 새로 붙었어요. 복사해서 route.ts를 통째로 교체하면 됩니다. -->
+
+<!-- B-9. 화면에서 부르기 -->
+<section class="slide">
+  <h2>화면에서 부르기 — fetch</h2>
+  <div class="fill">
+    <div class="code"><pre><span class="c">// 클라이언트 컴포넌트, 버튼 onClick 같은 이벤트 함수 안에서</span>
+"use client";
+
+await <span class="k">fetch</span>("/api/posts", {
+  method: <span class="k">"POST"</span>,
+  body: <span class="k">JSON.stringify</span>({ title: "셋째 글", contents: "잘 부탁해요!" }),
+});</pre></div>
+    <p class="body">주소 · method · body(보낼 데이터) 세 가지면 끝. 읽기만 할 땐 <span class="mono">fetch("/api/posts")</span> 한 줄입니다.</p>
+  </div>
+</section>
+<!-- 멘트: 화면 쪽에서는 fetch로 주문을 넣습니다. 어디로(주소), 어떤 종류로(method), 뭘 들려서(body). body는 JSON.stringify로 포장해서 보내야 해요. 그냥 읽을 땐 method도 body도 없이 주소만 쓰면 GET이 됩니다. -->
+
+<!-- B-10. 주의: 서버 컴포넌트에서 호출 금지 (클릭 진행) -->
+<section class="slide" data-manual>
+  <h2>주의 — 서버 컴포넌트에서 호출 금지</h2>
+  <div class="deploy fill">
+    <div class="uparrow reveal" style="order:2">
+      <svg viewBox="0 0 24 60" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 56 V8 M4 16 L12 8 L20 16"/></svg>
+      <p class="cap" style="color:var(--accent)">배포(빌드) 시작 — 코드가 올라간다</p>
+      <p class="callout inline">페이지를 미리 만들려고 서버 컴포넌트를 실행 — 안의 fetch("/api/posts")도 함께 실행돼요</p>
+    </div>
+    <div class="node" style="order:1">
+      <p class="body">Vercel <span class="cap">배포 서버</span></p>
+      <p class="err-mini reveal">"/api/posts? 그런 주소는 없는데요" — 아직 배포 전</p>
+    </div>
+    <div class="node" style="order:3">
+      <p class="body">내 컴퓨터 <span class="cap">작성한 코드</span></p>
+    </div>
+    <p class="bad reveal" style="order:4">빌드 실패 — 배포가 중단됩니다</p>
+  </div>
+</section>
+<!-- 멘트: 배포 버튼을 누르면 (클릭) 내 코드가 Vercel로 올라가고, Vercel은 페이지를 미리 만들려고 서버 컴포넌트를 실행합니다 — 안에 있던 fetch("/api/posts")까지 같이요. (클릭) 그런데 이 시점엔 배포가 끝나기 전이라 /api/posts라는 주소가 아직 세상에 없습니다. (클릭) 결과는 빌드 실패. 그래서 서버 컴포넌트에서는 자기 API를 fetch로 부르지 않습니다 — 같은 서버 안에 있으니, 필요하면 함수를 직접 부르면 됩니다. -->
+
+<!-- B-11. 직접 해보기 -->
+<section class="slide">
+  <h2>직접 해보기</h2>
+  <div class="cards fill">
+    <div class="card reveal" style="--i:0"><p class="n">1</p><p class="body">route.ts 교체</p><p class="cap">완성 코드로 덮어쓰고 저장</p></div>
+    <div class="card reveal" style="--i:1"><p class="n">2</p><p class="body">콘솔에서 보내기</p><p class="cap">F12 콘솔에 fetch 코드 붙여넣고 Enter</p></div>
+    <div class="card reveal" style="--i:2"><p class="n">3</p><p class="body">새로고침!</p><p class="cap"><span class="mono">/api/posts</span>에 셋째 글이 보이면 성공</p></div>
+  </div>
+</section>
+<!-- 멘트: 5분 드릴게요. fetch 슬라이드의 코드에서 "use client" 줄만 빼고 콘솔에 붙여넣으면 바로 보낼 수 있습니다. 실제 앱에서는 이 코드를 버튼 onClick 함수 안에 넣는다는 것만 기억하세요. -->
+
+<!-- B-12. 정리 -->
+<section class="slide">
+  <h2>오늘의 정리</h2>
+  <div class="rows">
+    <div class="row"><p class="key mono">POST</p><p class="body">데이터 "받아주세요" 요청 — 대문자로 내보내면 처리</p></div>
+    <div class="row"><p class="key mono">request.json()</p><p class="body">화면이 보낸 데이터 꺼내기 — 앞에 await 필수</p></div>
+    <div class="row"><p class="key mono">fetch</p><p class="body">클라이언트 컴포넌트에서 API 부르기 — 서버 컴포넌트에선 금지</p></div>
+  </div>
+</section>
+<!-- 멘트: 세 가지만 기억하세요. 대문자 POST, await request.json(), 그리고 fetch는 클라이언트 컴포넌트에서만. 지금은 배열이라 서버를 재시작하면 글이 사라지는데, 이게 바로 다음 시간에 DB를 배우는 이유입니다. -->
+
+<script>
+// 화면에 들어오면 슬라이드 활성화 (data-manual 슬라이드는 제외)
+const slides = [...document.querySelectorAll('.slide')];
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting && !e.target.hasAttribute('data-manual')) e.target.classList.add('in');
+}), { threshold: 0.4 });
+slides.forEach(s => io.observe(s));
+
+// 키보드: → / Space = 다음(수동 슬라이드면 항목 하나씩), ← = 이전
+const current = () => {
+  const y = window.scrollY + window.innerHeight * 0.5;
+  let i = 0;
+  slides.forEach((s, n) => { if (s.offsetTop <= y) i = n; });
+  return i;
+};
+addEventListener('keydown', e => {
+  if (['ArrowRight', ' ', 'PageDown'].includes(e.key)) {
+    e.preventDefault();
+    const s = slides[current()];
+    const next = s?.querySelector('.reveal:not(.in)');
+    if (s?.hasAttribute('data-manual') && next) return next.classList.add('in');
+    slides[current() + 1]?.scrollIntoView();
+  }
+  if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); slides[current() - 1]?.scrollIntoView(); }
+});
+
+// 수동 슬라이드: 터치/클릭으로도 한 단계씩 (모바일 대응)
+document.querySelectorAll('.slide[data-manual]').forEach(s => {
+  s.addEventListener('click', () => s.querySelector('.reveal:not(.in)')?.classList.add('in'));
+});
+
+// 완성 코드 복사 버튼
+document.querySelectorAll('.copybtn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const text = btn.parentElement.querySelector('pre').innerText;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy'); ta.remove();
+    }
+    btn.classList.add('done');
+    setTimeout(() => btn.classList.remove('done'), 1500);
+  });
+});
+</script>
+</body>
+</html>

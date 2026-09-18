@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Next.js proxy.ts</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@700;800&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+:root {
+  --bg: #000000;
+  --card: #141414;
+  --line: #2e2e2e;
+  --text: #ffffff;
+  --soft: #d4d4d4;
+  --muted: #a3a3a3;
+  --accent: #FFC000;
+  --accent2: #ED7D31;
+  --blue: #00B0F0;
+  --red: #FF4D4D;
+  --callout-bg: #ffffff;
+  --callout-text: #141414;
+  --code-dim: #8a8a8a;
+  --comment: #7ec87e;
+
+  --font: 'Nanum Gothic', 'Malgun Gothic', sans-serif;
+  --mono: 'JetBrains Mono', 'Courier New', monospace;
+
+  --fs-display: clamp(40px, 6.25vw, 120px);
+  --fs-h2:      clamp(30px, 3.75vw, 72px);
+  --fs-state:   clamp(24px, 2.9vw, 56px);
+  --fs-body:    clamp(20px, 2.3vw, 44px);
+  --fs-code:    clamp(15px, 1.9vw, 36px);
+  --fs-cap:     clamp(14px, 1.45vw, 28px);
+
+  --pad: clamp(24px, 6.67vw, 128px);
+  --gap: clamp(16px, 2.5vw, 48px);
+  --radius-card: 20px;
+  --radius-callout: 24px;
+  --radius-pill: 999px;
+}
+
+* { box-sizing: border-box; margin: 0; }
+html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: var(--font); font-weight: 800; }
+
+.slide {
+  min-height: 100dvh; scroll-snap-align: start;
+  padding: var(--pad); display: flex; flex-direction: column; gap: var(--gap);
+  position: relative; word-break: keep-all;
+}
+.slide--center { justify-content: center; align-items: center; text-align: center; }
+.slide--top { justify-content: flex-start; }
+
+.eyebrow { font-size: var(--fs-cap); color: var(--accent); letter-spacing: .3em; }
+h1 { font-size: var(--fs-display); line-height: 1.15; }
+h2 { font-size: var(--fs-h2); line-height: 1.1; }
+.state { font-size: var(--fs-state); line-height: 1.3; }
+.body  { font-size: var(--fs-body); line-height: 1.5; color: var(--soft); font-weight: 700; }
+.cap   { font-size: var(--fs-cap); color: var(--muted); font-weight: 700; }
+.k     { color: var(--accent); }
+.warn  { color: var(--red); }
+.fill  { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: var(--gap); }
+
+/* 카드 */
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }
+.card  { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card);
+         padding: clamp(20px, 2.5vw, 48px); display: flex; flex-direction: column;
+         align-items: center; text-align: center; gap: 12px; justify-content: center; }
+.card .n { font-size: var(--fs-state); color: var(--accent); }
+.card svg { width: clamp(40px, 4vw, 80px); height: auto; }
+
+/* 코드 박스 */
+.code { background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+        padding: clamp(16px, 2.5vw, 48px) clamp(16px, 3vw, 60px); overflow-x: auto; position: relative; }
+.code pre { font-family: var(--mono); font-size: var(--fs-code); line-height: 1.6; font-weight: 400; white-space: pre; }
+.code .dim { color: var(--code-dim); }
+.code .c   { color: var(--comment); }
+.code.compact pre { font-size: clamp(13px, 1.32vw, 24px); line-height: 1.45; }
+.code.compact { padding: clamp(14px, 1.8vw, 32px) clamp(16px, 2.2vw, 44px); }
+
+/* 복사 버튼 */
+.copy { position: absolute; top: 10px; right: 10px; display: flex; align-items: center; gap: .5em;
+        background: transparent; border: 1px solid var(--line); color: var(--muted);
+        border-radius: 10px; padding: .5em .9em; cursor: pointer;
+        font-family: var(--font); font-weight: 700; font-size: clamp(12px, 1vw, 20px); }
+.copy svg { width: 1.1em; height: 1.1em; }
+.copy:hover, .copy:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+.copy[data-done] { color: var(--accent); border-color: var(--accent); }
+
+/* 말풍선 */
+.callout { background: var(--callout-bg); color: var(--callout-text); border-radius: var(--radius-callout);
+           padding: clamp(14px, 1.8vw, 36px) clamp(18px, 2vw, 40px); font-size: var(--fs-cap); line-height: 1.5;
+           position: absolute; right: var(--pad); top: calc(var(--pad) + 1em); max-width: 26em; }
+
+.pill { display: inline-block; background: var(--accent); color: var(--callout-text);
+        padding: .7em 1.8em; border-radius: var(--radius-pill); font-size: var(--fs-cap); }
+
+/* 정리 표 */
+.rows { flex: 1; display: flex; flex-direction: column; }
+.row  { flex: 1; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); align-items: center; gap: var(--gap); }
+.row + .row { border-top: 1px solid var(--line); }
+.row .key { font-size: var(--fs-body); color: var(--accent); }
+.row .key.mono { font-family: var(--mono); }
+.row .key.dont { color: var(--red); }
+
+/* 흐름도 (4번 슬라이드) */
+.flow { display: flex; align-items: center; justify-content: center; gap: clamp(8px, 1.2vw, 28px); flex-wrap: nowrap; }
+.node { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card);
+        padding: clamp(12px, 1.5vw, 30px) clamp(14px, 1.8vw, 36px); text-align: center; min-width: 0; }
+.node .t { font-size: var(--fs-body); line-height: 1.3; }
+.node .s { font-family: var(--mono); font-weight: 400; font-size: var(--fs-cap); color: var(--muted); margin-top: .4em; }
+.node.gate { border-color: var(--accent); }
+.node.gate .t { color: var(--accent); font-family: var(--mono); font-weight: 700; }
+.node.ok { border-color: var(--accent); }
+.node.no { border-color: var(--red); }
+.node.no .s { color: var(--red); }
+.branch { display: flex; flex-direction: column; gap: clamp(10px, 1.4vw, 28px); }
+.arm { display: flex; align-items: center; gap: clamp(6px, .9vw, 18px); }
+.arm .lab { font-size: var(--fs-cap); }
+.arrow { width: clamp(24px, 3vw, 60px); height: auto; flex: none; }
+
+/* 브라우저 목업 */
+.browser { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; flex: none; }
+.browser .bar { display: flex; align-items: center; gap: 6px; padding: clamp(7px, .7vw, 13px) clamp(9px, .9vw, 16px);
+                border-bottom: 1px solid var(--line); }
+.browser .dot { width: clamp(6px, .55vw, 11px); aspect-ratio: 1; border-radius: 50%; background: #3a3a3a; }
+.browser .url { font-family: var(--mono); font-weight: 400; font-size: var(--fs-cap); color: var(--soft); margin-left: .6em; }
+.browser .win { padding: clamp(14px, 1.8vw, 36px) clamp(16px, 2vw, 40px); font-size: var(--fs-body); }
+
+/* 폴더 트리 (5번 슬라이드) */
+.trees { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+.tree { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card);
+        padding: clamp(18px, 2.2vw, 44px); }
+.tree .h { font-size: var(--fs-body); margin-bottom: .7em; }
+.tree.ok { border-color: var(--accent); }
+.tree.ok .h { color: var(--accent); }
+.tree.no { border-color: var(--red); }
+.tree.no .h { color: var(--red); }
+.tree pre { font-family: var(--mono); font-weight: 400; font-size: var(--fs-code); line-height: 1.7;
+            white-space: pre; overflow-x: auto; color: var(--soft); }
+.tree pre b { color: var(--text); font-weight: 700; }
+.tree pre .note { color: var(--accent); }
+.tree.no pre .note { color: var(--red); }
+
+/* 등장 애니메이션 */
+.reveal { opacity: 0; transform: translateY(24px);
+          transition: opacity .5s ease, transform .5s ease;
+          transition-delay: calc(var(--i, 0) * .35s); }
+.reveal.pop { transform: scale(.8); }
+.slide.in .reveal, .reveal.in { opacity: 1; transform: none; }
+
+/* 반응형 */
+@media (max-width: 900px) {
+  .cards { grid-template-columns: 1fr; }
+  .trees { grid-template-columns: 1fr; }
+  .callout { position: static; max-width: none; }
+  .row { grid-template-columns: 1fr; gap: 8px; padding: 16px 0; }
+  .slide { min-height: auto; padding-top: 56px; padding-bottom: 56px; }
+  .flow { flex-direction: column; align-items: stretch; }
+  .arm { flex-direction: row; }
+  .flow > .arrow { transform: rotate(90deg); align-self: center; }
+  .browser { align-self: stretch; }
+}
+@media (max-width: 480px) {
+  html { scroll-snap-type: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal { transition: none; opacity: 1; transform: none; }
+}
+
+/* 목록으로 돌아가기 (표지 전용) */
+.home-btn {
+  position: absolute; top: clamp(16px, 2.2vw, 40px); left: clamp(16px, 2.2vw, 40px);
+  z-index: 10; display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--card); color: var(--muted); text-decoration: none;
+  font-family: var(--font); font-weight: 700; font-size: clamp(12px, 1.1vw, 16px);
+  line-height: 1; transition: color .2s ease, border-color .2s ease;
+}
+.home-btn:hover, .home-btn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+</style>
+</head>
+<body>
+
+<!-- ===== 1. 표지 ===== -->
+<section class="slide slide--center">
+  <a class="home-btn" href="index.html">← 목록</a>
+  <h1 class="reveal">페이지가 그려지기 전에<br><span class="k">끼어들기</span></h1>
+  <p class="cap reveal" style="--i:1">Next.js proxy.ts</p>
+</section>
+<!-- 멘트: 지금까지는 페이지와 API를 만들었습니다. 오늘은 그 페이지가 그려지기 "직전"에 끼어드는 파일을 하나 배웁니다. -->
+
+
+<!-- ===== 2. 이름이 바뀌었습니다 ===== -->
+<section class="slide">
+  <h2><span style="font-family:var(--mono);font-weight:700">middleware.ts</span> → <span class="k" style="font-family:var(--mono);font-weight:700">proxy.ts</span></h2>
+  <div class="rows">
+    <div class="row reveal" style="--i:0">
+      <p class="key">바뀐 것</p>
+      <p class="body">파일 이름과 함수 이름. <span style="font-family:var(--mono)">middleware</span> → <span style="font-family:var(--mono)" class="k">proxy</span></p>
+    </div>
+    <div class="row reveal" style="--i:1">
+      <p class="key">그대로인 것</p>
+      <p class="body"><span style="font-family:var(--mono)">NextRequest</span>, <span style="font-family:var(--mono)">NextResponse</span>, <span style="font-family:var(--mono)">config.matcher</span> 전부 동일</p>
+    </div>
+    <div class="row reveal" style="--i:2">
+      <p class="key">바뀐 이유</p>
+      <p class="body">Express의 미들웨어와 혼동된다는 지적</p>
+    </div>
+  </div>
+</section>
+<!-- 멘트: Next.js 16부터입니다. 검색하면 나오는 middleware 자료는 이름만 바꿔서 그대로 읽으면 됩니다.
+     기존 프로젝트는 npx @next/codemod@canary middleware-to-proxy . 로 자동 변환됩니다. -->
+
+
+<!-- ===== 3. proxy란? ===== -->
+<section class="slide">
+  <h2>proxy란?</h2>
+  <p class="state">페이지에 도착하기 전에 지나는 <span class="k">검문소</span></p>
+  <div class="cards fill">
+    <div class="card reveal" style="--i:0">
+      <svg viewBox="0 0 64 48" fill="none" stroke="#FFC000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="통과">
+        <path d="M8 6 V42"/><path d="M56 6 V42"/>
+        <path d="M18 24 H42"/><path d="M34 16 L42 24 L34 32"/>
+      </svg>
+      <p class="body" style="color:var(--text)">통과시킨다</p>
+      <p class="cap">원래 가려던 페이지로</p>
+    </div>
+    <div class="card reveal" style="--i:1">
+      <svg viewBox="0 0 64 48" fill="none" stroke="#FFC000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="다른 곳으로">
+        <path d="M8 38 H38 V14"/><path d="M30 22 L38 14 L46 22"/>
+      </svg>
+      <p class="body" style="color:var(--text)">다른 곳으로 보낸다</p>
+      <p class="cap">로그인 페이지로</p>
+    </div>
+    <div class="card reveal" style="--i:2">
+      <svg viewBox="0 0 64 48" fill="none" stroke="#FFC000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="기록">
+        <rect x="14" y="5" width="36" height="38" rx="4"/>
+        <path d="M23 17 H41"/><path d="M23 25 H41"/><path d="M23 33 H33"/>
+      </svg>
+      <p class="body" style="color:var(--text)">기록한다</p>
+      <p class="cap">누가 언제 들어왔는지</p>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 건물 로비의 출입 게이트를 떠올리세요. 사무실(페이지)에 가기 전에 반드시 로비를 지납니다.
+     게이트가 하는 일은 셋뿐입니다. 열어주거나, 다른 데로 보내거나, 기록을 남기거나. -->
+
+
+<!-- ===== 4. 실행 순서 (클릭 진행) ===== -->
+<section class="slide slide--top" data-manual>
+  <h2>실행 순서</h2>
+  <div class="fill">
+    <div class="flow">
+      <div class="browser">
+        <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">/profile</span></div>
+        <div class="win">주소창에 입력</div>
+      </div>
+
+      <svg class="arrow reveal" style="--i:0" viewBox="0 0 60 24" fill="#FFC000" aria-hidden="true">
+        <polygon points="0,9 38,9 38,2 60,12 38,22 38,15 0,15"/>
+      </svg>
+
+      <div class="node gate reveal" style="--i:0">
+        <p class="t">proxy.ts</p>
+        <p class="s">먼저 실행</p>
+      </div>
+
+      <div class="branch">
+        <div class="arm reveal" style="--i:1">
+          <svg class="arrow" viewBox="0 0 60 24" fill="#FFC000" aria-hidden="true">
+            <polygon points="0,9 38,9 38,2 60,12 38,22 38,15 0,15"/>
+          </svg>
+          <div class="node ok">
+            <p class="t">프로필 페이지</p>
+            <p class="s">next()</p>
+          </div>
+        </div>
+        <div class="arm reveal" style="--i:2">
+          <svg class="arrow" viewBox="0 0 60 24" fill="#FF4D4D" aria-hidden="true">
+            <polygon points="0,9 38,9 38,2 60,12 38,22 38,15 0,15"/>
+          </svg>
+          <div class="node no">
+            <p class="t">로그인 페이지</p>
+            <p class="s">redirect()</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- 멘트: (클릭1) 페이지를 그리기 전에 proxy.ts가 먼저 실행됩니다.
+     (클릭2) 로그인이 확인되면 원래 가려던 페이지가 그대로 그려지고,
+     (클릭3) 아니면 페이지는 아예 그려지지 않고 로그인 페이지로 보내집니다. -->
+
+
+<!-- ===== 5. 어디에 만드나 ===== -->
+<section class="slide">
+  <h2>어디에 만드나</h2>
+  <div class="trees fill">
+    <div class="tree ok">
+      <p class="h">app 폴더와 같은 층</p>
+      <pre>my-app/
+├─ src/
+│  ├─ <b>app/</b>
+│  └─ <b>proxy.ts</b>   <span class="note">← 여기</span>
+└─ package.json</pre>
+    </div>
+    <div class="tree no reveal" style="--i:1">
+      <p class="h">app 폴더 안은 안 됨</p>
+      <pre>my-app/
+└─ src/
+   └─ <b>app/</b>
+      └─ <b>proxy.ts</b>   <span class="note">← 실행 안 됨</span></pre>
+    </div>
+  </div>
+</section>
+<!-- 멘트: src를 안 쓰는 프로젝트라면 프로젝트 맨 바깥에 둡니다. 기준은 늘 "app 폴더와 같은 층".
+     그리고 프로젝트당 proxy 파일은 하나만 둘 수 있습니다. -->
+
+
+<!-- ===== 6. STEP 1 ===== -->
+<section class="slide">
+  <p class="eyebrow">STEP 1</p>
+  <h2>파일 만들고 함수 내보내기</h2>
+  <div class="fill">
+    <div class="code"><pre>import { NextResponse, NextRequest } from "next/server";
+
+export function <span class="k">proxy</span>(request: NextRequest) {
+  return <span class="k">NextResponse.next()</span>;
+}</pre></div>
+    <p class="body"><span class="k">next()</span> = 아무것도 막지 않고 그대로 통과</p>
+  </div>
+</section>
+<!-- 멘트: 함수 이름은 반드시 proxy여야 합니다. 이 상태로 저장하면 모든 요청이 그냥 지나갑니다.
+     지금은 따라 치지 말고 눈으로만 보세요. -->
+
+
+<!-- ===== 7. STEP 2 ===== -->
+<section class="slide">
+  <p class="eyebrow">STEP 2</p>
+  <h2>로그인 안 했으면 돌려보내기</h2>
+  <p class="callout">실습이라 false로 고정해둔 값입니다. 실제로는 쿠키에서 로그인 여부를 꺼내 확인합니다.</p>
+  <div class="fill">
+    <div class="code"><pre><span class="dim">import { NextResponse, NextRequest } from "next/server";</span>
+
+<span class="dim">export function proxy(request: NextRequest) {</span>
+  const isAuthenticated = false;
+
+  if (!isAuthenticated) {
+    return <span class="k">NextResponse.redirect</span>(new URL(<span class="k">"/login"</span>, request.url));
+  }
+
+<span class="dim">  return NextResponse.next();</span>
+<span class="dim">}</span></pre></div>
+  </div>
+</section>
+<!-- 멘트: redirect를 return하는 순간 프로필 페이지는 그려지지도 않습니다. 브라우저 주소창도 /login으로 바뀝니다.
+     new URL의 두 번째 인자는 "지금 요청의 주소를 기준으로 삼아라"는 뜻입니다. -->
+
+
+<!-- ===== 8. STEP 3 ===== -->
+<section class="slide">
+  <p class="eyebrow">STEP 3</p>
+  <h2>어느 주소에서 실행할지</h2>
+  <div class="fill">
+    <div class="code"><pre>export const <span class="k">config</span> = {
+  <span class="k">matcher</span>: "/profile/:path*",
+};</pre></div>
+    <p class="body reveal" style="--i:1">이 줄이 없으면 <span class="warn">모든 페이지</span>에서 실행됩니다</p>
+  </div>
+</section>
+<!-- 멘트: /profile 과 그 아래 모든 주소에서만 proxy가 돌게 됩니다.
+     matcher를 안 쓰면 이미지, 정적 파일 요청까지 전부 검문소를 지나게 되니 꼭 좁혀주세요. -->
+
+
+<!-- ===== 9. 완성 코드 ===== -->
+<section class="slide">
+  <h2>완성 코드</h2>
+  <div class="fill">
+    <div class="code compact">
+      <button class="copy" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>
+        </svg>
+        <span class="label">복사</span>
+      </button>
+<pre><span class="c">// src/proxy.ts</span>
+import { NextResponse, NextRequest } from "next/server";
+
+export function <span class="k">proxy</span>(request: NextRequest) {
+  const isAuthenticated = false;
+
+  if (!isAuthenticated) {
+    return NextResponse.<span class="k">redirect</span>(new URL("/login", request.url));
+  }
+
+  return NextResponse.<span class="k">next</span>();
+}
+
+export const config = {
+  <span class="k">matcher</span>: "/profile/:path*",
+};</pre>
+    </div>
+    <p style="text-align:center"><span class="pill">그대로 복사해서 VS Code에 붙여넣으세요</span></p>
+  </div>
+</section>
+<!-- 멘트: src/app/profile/page.tsx 와 src/app/login/page.tsx 는 미리 만들어두었다고 가정합니다. -->
+
+
+<!-- ===== 10. 직접 해보기 ===== -->
+<section class="slide">
+  <h2>직접 해보기</h2>
+  <div class="cards fill">
+    <div class="card reveal" style="--i:0">
+      <p class="n">1</p>
+      <p class="body" style="color:var(--text)">저장</p>
+      <p class="cap">src/proxy.ts 로 저장</p>
+    </div>
+    <div class="card reveal" style="--i:1">
+      <p class="n">2</p>
+      <p class="body" style="color:var(--text)">접속</p>
+      <p class="cap">localhost:3000/profile</p>
+    </div>
+    <div class="card reveal" style="--i:2">
+      <p class="n">3</p>
+      <p class="body" style="color:var(--text)">확인</p>
+      <p class="cap">주소가 /login으로 바뀌면 성공</p>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 확인했으면 isAuthenticated를 true로 바꾸고 새로고침해보세요. 이번엔 프로필 페이지가 그대로 뜹니다.
+     안 되면 파일 위치부터 다시 보세요. app 폴더 안에 들어가 있으면 아무 일도 일어나지 않습니다. -->
+
+
+<!-- ===== 11. Do / Don't ===== -->
+<section class="slide">
+  <h2>proxy가 할 일, 하지 말 일</h2>
+  <div class="rows">
+    <div class="row reveal" style="--i:0">
+      <p class="key">Do</p>
+      <p class="body">로그인 여부 1차 확인, 리다이렉트, 헤더 수정, 로그인 토큰 갱신</p>
+    </div>
+    <div class="row reveal" style="--i:1">
+      <p class="key dont">Don't</p>
+      <p class="body">느린 DB 조회. 요청마다 모든 페이지가 느려집니다</p>
+    </div>
+  </div>
+</section>
+<!-- 멘트: Supabase 같은 인증 라이브러리가 proxy에서 세션을 갱신하는 코드를 주는 게 Do의 마지막 항목입니다.
+     서버 컴포넌트는 쿠키를 쓸 수 없어서 토큰을 새로 저장할 자리가 proxy밖에 없어요.
+     다만 그 라이브러리들도 "이 쿠키를 그대로 믿지 말고 페이지에서 한 번 더 검증하라"고 말합니다.
+     proxy는 1차 관문이지 최종 관문이 아닙니다. -->
+
+
+<!-- ===== 12. 정리 ===== -->
+<section class="slide">
+  <h2>오늘의 정리</h2>
+  <div class="rows">
+    <div class="row"><p class="key mono">proxy</p><p class="body">페이지가 그려지기 전에 실행되는 함수</p></div>
+    <div class="row"><p class="key mono">next() / redirect()</p><p class="body">통과시키거나, 다른 주소로 보내거나</p></div>
+    <div class="row"><p class="key mono">config.matcher</p><p class="body">proxy가 실행될 주소를 정한다</p></div>
+  </div>
+</section>
+
+<script>
+const slides = [...document.querySelectorAll('.slide')];
+
+// 화면에 들어오면 슬라이드 활성화 (data-manual 슬라이드는 제외)
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting && !e.target.hasAttribute('data-manual')) e.target.classList.add('in');
+}), { threshold: 0.4 });
+slides.forEach(s => io.observe(s));
+
+// 현재 슬라이드 (화면보다 긴 슬라이드가 있어도 어긋나지 않음)
+const current = () => {
+  const y = window.scrollY + window.innerHeight * 0.5;
+  let i = 0;
+  slides.forEach((s, n) => { if (s.offsetTop <= y) i = n; });
+  return i;
+};
+
+addEventListener('keydown', e => {
+  if (['ArrowRight', ' ', 'PageDown'].includes(e.key)) {
+    e.preventDefault();
+    const s = slides[current()];
+    const next = s?.querySelector('.reveal:not(.in)');
+    if (s?.hasAttribute('data-manual') && next) return next.classList.add('in');
+    slides[current() + 1]?.scrollIntoView();
+  }
+  if (['ArrowLeft', 'PageUp'].includes(e.key)) {
+    e.preventDefault();
+    slides[current() - 1]?.scrollIntoView();
+  }
+});
+
+// 수동 슬라이드: 키보드가 없는 환경에서 탭/클릭으로 진행
+document.querySelectorAll('.slide[data-manual]').forEach(s => {
+  s.addEventListener('click', () => s.querySelector('.reveal:not(.in)')?.classList.add('in'));
+});
+
+// 완성 코드 복사
+document.querySelectorAll('.copy').forEach(btn => {
+  btn.addEventListener('click', async e => {
+    e.stopPropagation();
+    const text = btn.parentElement.querySelector('pre').innerText;
+    const label = btn.querySelector('.label');
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;top:-1000px';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch {}
+      ta.remove();
+    }
+    label.textContent = 'Copied!';
+    btn.setAttribute('data-done', '');
+    setTimeout(() => { label.textContent = '복사'; btn.removeAttribute('data-done'); }, 1500);
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Next.js Server Actions</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@700;800&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+  :root {
+    /* 색상 */
+    --bg: #000000;
+    --card: #141414;
+    --line: #2e2e2e;
+    --text: #ffffff;
+    --soft: #d4d4d4;
+    --muted: #a3a3a3;
+    --accent: #FFC000;
+    --accent2: #ED7D31;
+    --blue: #00B0F0;
+    --red: #FF4D4D;
+    --callout-bg: #ffffff;
+    --callout-text: #141414;
+    --code-dim: #8a8a8a;
+    --comment: #7ec87e;
+
+    /* 글꼴 */
+    --font: 'Nanum Gothic', 'Malgun Gothic', sans-serif;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+
+    /* 글자 크기 */
+    --fs-display: clamp(40px, 6.25vw, 120px);
+    --fs-h2:      clamp(30px, 3.75vw, 72px);
+    --fs-state:   clamp(24px, 2.9vw, 56px);
+    --fs-body:    clamp(20px, 2.3vw, 44px);
+    --fs-code:    clamp(15px, 1.9vw, 36px);
+    --fs-cap:     clamp(14px, 1.45vw, 28px);
+
+    /* 여백·형태 */
+    --pad: clamp(24px, 6.67vw, 128px);
+    --gap: clamp(16px, 2.5vw, 48px);
+    --radius-card: 20px;
+    --radius-callout: 24px;
+    --radius-pill: 999px;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-weight: 800; }
+
+  .slide {
+    min-height: 100dvh; scroll-snap-align: start;
+    padding: var(--pad); display: flex; flex-direction: column; gap: var(--gap);
+    position: relative; word-break: keep-all;
+  }
+  .slide--center { justify-content: center; align-items: center; text-align: center; }
+
+  .eyebrow { font-size: var(--fs-cap); color: var(--accent); letter-spacing: .3em; }
+  h1 { font-size: var(--fs-display); line-height: 1.15; }
+  h2 { font-size: var(--fs-h2); line-height: 1.1; }
+  .state { font-size: var(--fs-state); line-height: 1.3; }
+  .body  { font-size: var(--fs-body); line-height: 1.5; color: var(--soft); font-weight: 700; }
+  .cap   { font-size: var(--fs-cap); color: var(--muted); font-weight: 700; }
+  .k     { color: var(--accent); }
+  .r     { color: var(--red); }
+  .fill  { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: var(--gap); }
+  .fill--top { justify-content: flex-start; }
+  .mono  { font-family: var(--mono); }
+
+  /* 카드 */
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }
+  .cards.two { grid-template-columns: repeat(2, 1fr); }
+  .card  { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card);
+           padding: clamp(20px, 2.5vw, 48px); display: flex; flex-direction: column;
+           align-items: center; text-align: center; gap: 12px; }
+  .card .n { font-size: var(--fs-state); color: var(--accent); }
+  .card .label { font-size: var(--fs-body); color: var(--accent); font-family: var(--mono); }
+  .card svg { width: clamp(40px, 4vw, 80px); height: auto; }
+  .card .cap.mono { font-size: clamp(13px, 1.3vw, 24px); color: var(--soft); }
+  .card .pts { width: 100%; text-align: left; display: flex; flex-direction: column; gap: .5em;
+               font-size: clamp(13px, 1.4vw, 27px); line-height: 1.4; color: var(--soft); font-weight: 700; }
+  .card .pts li { list-style: none; position: relative; padding-left: 1.1em; }
+  .card .pts li::before { content: ""; position: absolute; left: 0; top: .5em;
+                          width: .38em; height: .38em; border-radius: 50%; background: var(--accent); }
+  .card .pts .mono { font-family: var(--mono); font-weight: 400; }
+  .card .snip { width: 100%; background: #0b0b0b; border: 1px solid var(--line); border-radius: 10px;
+                padding: clamp(8px, .9vw, 16px) clamp(10px, 1.1vw, 20px); text-align: left;
+                font-family: var(--mono); font-weight: 400; white-space: pre; overflow-x: auto;
+                font-size: clamp(11px, 1.15vw, 22px); line-height: 1.55; color: var(--soft); margin-top: .2em; }
+  .card .snip + .snip { margin-top: .6em; }
+  .card .snip .c { color: var(--comment); }
+  .card .snip .r { color: var(--red); }
+  .card .snip .k { color: var(--accent); }
+
+  /* 파일 탭 (완성 코드 2개) */
+  .tabs { display: flex; gap: 10px; }
+  .tab { background: transparent; border: 1px solid var(--line); border-radius: 10px;
+         color: var(--muted); font-family: var(--mono); font-weight: 700;
+         font-size: clamp(12px, 1.2vw, 22px); padding: .5em 1.2em; cursor: pointer; }
+  .tab.active { background: var(--accent); color: var(--callout-text); border-color: var(--accent); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* 단계 줄 (B 파일 분리 이유) */
+  .stepline { display: grid; grid-template-columns: auto 1fr; align-items: center;
+              gap: clamp(12px, 1.6vw, 32px); border: 1px solid var(--line);
+              border-radius: var(--radius-card); padding: clamp(12px, 1.6vw, 30px); }
+  .stepline svg { width: clamp(30px, 3vw, 58px); height: auto; }
+  .stepline .t { font-size: clamp(15px, 1.7vw, 34px); line-height: 1.4; }
+  .stepline .err { font-family: var(--mono); font-weight: 400; color: var(--red);
+                   font-size: clamp(11px, 1.05vw, 20px); margin-top: .6em; }
+  .stepline.bad { border-color: var(--red); }
+
+  /* 상태 미리보기 (C 목표·직접 해보기) */
+  .prev { width: 100%; background: #0b0b0b; border: 1px solid var(--line); border-radius: 10px;
+          padding: clamp(8px, 1vw, 18px); text-align: center; font-weight: 700;
+          font-size: clamp(12px, 1.3vw, 25px); }
+  .prev.off { color: var(--muted); }
+  .prev.bad { color: var(--red); }
+  .prev.ok  { color: var(--comment); }
+
+  /* 값 설명 목록 (useActionState) */
+  .deflist { display: flex; flex-direction: column; gap: clamp(8px, 1vw, 20px); }
+  .deflist .li { display: grid; grid-template-columns: auto 1fr; gap: clamp(10px, 1.4vw, 28px);
+                 align-items: baseline; font-size: clamp(14px, 1.6vw, 32px); color: var(--soft); }
+  .deflist .li .m { font-family: var(--mono); font-weight: 400; color: var(--accent); }
+
+  /* 상황 → 답 (언제 쓸까) */
+  .verdict { background: var(--accent); color: var(--callout-text); border-radius: var(--radius-pill);
+             padding: .5em 1.2em; font-size: clamp(13px, 1.4vw, 27px); }
+
+  /* 코드 박스 */
+  .code { background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+          padding: clamp(16px, 2.5vw, 48px) clamp(16px, 3vw, 60px); overflow-x: auto; position: relative; }
+  .code pre { font-family: var(--mono); font-size: var(--fs-code); line-height: 1.6; font-weight: 400; white-space: pre; }
+  .code .dim { color: var(--code-dim); }
+  .code .c   { color: var(--comment); }
+  .code.compact { padding: clamp(14px, 1.6vw, 32px) clamp(14px, 2vw, 44px); }
+  .code.compact pre { font-size: clamp(13px, 1.3vw, 24px); line-height: 1.45; }
+  .code .file { font-family: var(--mono); font-size: var(--fs-cap); color: var(--muted);
+                font-weight: 400; margin-bottom: .8em; }
+
+  /* 복사 버튼 */
+  .copybtn { position: absolute; top: 12px; right: 12px; background: transparent;
+             border: 1px solid var(--line); border-radius: 10px; color: var(--muted);
+             font-family: var(--mono); font-size: clamp(12px, 1.1vw, 20px); font-weight: 700;
+             padding: .5em 1em; cursor: pointer; }
+  .copybtn:hover { color: var(--accent); border-color: var(--accent); }
+  .copybtn .done-text { display: none; }
+  .copybtn.done { color: var(--accent); border-color: var(--accent); }
+  .copybtn.done .copy-text { display: none; }
+  .copybtn.done .done-text { display: inline; }
+
+  /* 말풍선 */
+  .callout { background: var(--callout-bg); color: var(--callout-text); border-radius: var(--radius-callout);
+             padding: clamp(14px, 1.8vw, 36px) clamp(18px, 2vw, 40px); font-size: var(--fs-cap); line-height: 1.5;
+             position: absolute; right: var(--pad); top: calc(var(--pad) + 1em); max-width: 26em; }
+  .callout.inline { position: static; max-width: none; align-self: center; text-align: center; }
+
+  .pill { display: inline-block; background: var(--accent); color: var(--callout-text);
+          padding: .7em 1.8em; border-radius: var(--radius-pill); font-size: var(--fs-cap); }
+
+  /* 정리 표 */
+  .rows { flex: 1; display: flex; flex-direction: column; }
+  .row  { flex: 1; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); align-items: center; gap: var(--gap); }
+  .row + .row { border-top: 1px solid var(--line); }
+  .row .key { font-size: var(--fs-body); color: var(--accent); }
+  .row .key.mono { font-family: var(--mono); }
+
+  /* 흐름도 (A-4) */
+  .flow { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+          gap: clamp(12px, 1.6vw, 32px); }
+  .node { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card);
+          padding: clamp(14px, 1.8vw, 32px); display: flex; flex-direction: column;
+          align-items: center; gap: 10px; }
+  .node .title { font-size: clamp(16px, 1.7vw, 32px); color: var(--muted); }
+  .arrows { display: flex; flex-direction: column; gap: clamp(14px, 2vw, 40px); align-items: center; }
+  .arrow { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: clamp(120px, 16vw, 300px); }
+  .arrow .line { width: 100%; height: 0; border-top: 3px solid var(--accent); position: relative; }
+  .arrow .line::after { content: ""; position: absolute; top: -9px; right: -2px;
+                        border: 9px solid transparent; border-left-color: var(--accent); }
+  .arrow.back .line { border-top-color: var(--muted); }
+  .arrow.back .line::after { left: -2px; right: auto; border: 9px solid transparent; border-right-color: var(--muted); }
+  .arrow .tag { font-size: clamp(12px, 1.2vw, 22px); color: var(--soft); font-weight: 700; text-align: center; line-height: 1.4; }
+  .runpill { background: var(--accent); color: var(--callout-text); font-family: var(--mono);
+             font-size: clamp(12px, 1.2vw, 22px); padding: .4em 1em; border-radius: var(--radius-pill); }
+  .banner { display: flex; align-items: center; justify-content: center; gap: 16px;
+            border: 1px solid var(--accent); border-radius: var(--radius-card);
+            padding: clamp(12px, 1.4vw, 28px); font-size: clamp(15px, 1.5vw, 30px); }
+  .banner svg { width: clamp(26px, 2.4vw, 46px); height: auto; flex: none; }
+
+  /* 브라우저·터미널 목업 */
+  .mock { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; width: 100%; }
+  .mock .bar { background: #1e1e1e; border-bottom: 1px solid var(--line); padding: 8px 12px;
+               display: flex; align-items: center; gap: 8px; }
+  .mock .dot { width: 10px; height: 10px; border-radius: 50%; background: #3a3a3a; }
+  .mock .url { font-family: var(--mono); font-size: clamp(11px, 1.05vw, 20px); color: var(--muted); font-weight: 400; }
+  .mock .screen { padding: clamp(12px, 1.6vw, 30px); display: flex; flex-direction: column; gap: 10px; }
+  .field { border: 1px solid var(--line); border-radius: 8px; padding: .55em .8em;
+           font-size: clamp(12px, 1.25vw, 24px); color: var(--muted); font-weight: 700; text-align: left; }
+  .btnbox { background: var(--blue); color: #fff; border-radius: 8px; padding: .5em 1em;
+            font-size: clamp(12px, 1.25vw, 24px); text-align: center; align-self: flex-start; }
+  .term { background: #0b0b0b; border: 1px solid var(--line); border-radius: 14px;
+          padding: clamp(14px, 1.8vw, 34px); font-family: var(--mono); font-weight: 400;
+          font-size: clamp(12px, 1.35vw, 26px); line-height: 1.7; color: var(--soft); }
+  .term .p { color: var(--comment); }
+  .goal { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: clamp(12px, 2vw, 40px); }
+  .chev { font-size: clamp(24px, 3vw, 60px); color: var(--accent); }
+
+  /* 등장 애니메이션 */
+  .reveal { opacity: 0; transform: translateY(24px);
+            transition: opacity .5s ease, transform .5s ease;
+            transition-delay: calc(var(--i, 0) * .35s); }
+  .reveal.pop { transform: scale(.8); }
+  .slide.in .reveal, .reveal.in { opacity: 1; transform: none; }
+  .slide[data-manual] .reveal { transition-delay: 0s; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { transition: none; opacity: 1; transform: none; }
+  }
+
+  /* 반응형 */
+  @media (max-width: 900px) {
+    .cards, .cards.two { grid-template-columns: 1fr; }
+    .callout { position: static; max-width: none; }
+    .row { grid-template-columns: 1fr; gap: 8px; padding: 16px 0; }
+    .slide { min-height: auto; padding-top: 56px; padding-bottom: 56px; }
+    .flow, .goal { grid-template-columns: 1fr; }
+    .arrows { flex-direction: row; justify-content: center; }
+    .arrow { min-width: 0; }
+    .arrow .line { width: clamp(80px, 30vw, 160px); }
+    .chev { transform: rotate(90deg); text-align: center; }
+  }
+  @media (max-width: 480px) {
+    html { scroll-snap-type: none; }
+  }
+
+/* 목록으로 돌아가기 (표지 전용) */
+.home-btn {
+  position: absolute; top: clamp(16px, 2.2vw, 40px); left: clamp(16px, 2.2vw, 40px);
+  z-index: 10; display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--card); color: var(--muted); text-decoration: none;
+  font-family: var(--font); font-weight: 700; font-size: clamp(12px, 1.1vw, 16px);
+  line-height: 1; transition: color .2s ease, border-color .2s ease;
+}
+.home-btn:hover, .home-btn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+</style>
+</head>
+<body>
+
+<!-- ============ A. 서버 컴포넌트에서 쓰기 ============ -->
+
+<!-- A-1. 표지 -->
+<section class="slide slide--center">
+  <a class="home-btn" href="index.html">← 목록</a>
+  <p class="eyebrow reveal">NEXT.JS</p>
+  <h1 class="reveal" style="--i:1">Next.js<br><span class="k">Server Actions</span></h1>
+  <p class="cap reveal" style="--i:2">form으로 서버 함수 실행하기</p>
+</section>
+<!-- 멘트: 지난 시간에 만든 route.ts는 "주소"를 만드는 방법이었죠. 오늘은 주소 없이, 함수 하나로 서버에 일을 시키는 방법을 배웁니다. -->
+
+<!-- A-2. 서버 코드를 부르는 두 가지 방법 -->
+<section class="slide" data-manual>
+  <h2>서버 코드를 부르는 두 가지 방법</h2>
+  <div class="cards two fill">
+    <div class="card">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 6h14l8 8v28H14z"/><path d="M28 6v8h8"/><path d="M19 26h12"/><path d="M19 33h8"/>
+      </svg>
+      <p class="label">Route Handler</p>
+      <p class="body">API 주소를 만든다</p>
+      <p class="cap mono">app/api/login/route.ts<br>→ /api/login</p>
+    </div>
+    <div class="card reveal">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 12c-4 0-5 3-5 6s-1 6-5 6c4 0 5 3 5 6s1 6 5 6"/>
+        <path d="M30 12c4 0 5 3 5 6s1 6 5 6c-4 0-5 3-5 6s-1 6-5 6"/>
+      </svg>
+      <p class="label">Server Actions</p>
+      <p class="body">서버 함수를 만든다</p>
+      <p class="cap mono">login()<br>→ &lt;form action={login}&gt;</p>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 왼쪽은 지난 시간에 한 방식입니다. 주소를 만들고, 그 주소로 요청을 보냈죠. 오늘 배울 건 오른쪽 — 주소를 만들지 않고 함수를 만들어 form에 바로 연결합니다. -->
+
+<!-- A-3. Server Actions란? -->
+<section class="slide">
+  <h2>Server Actions란?</h2>
+  <p class="state"><span class="k">서버에서만</span> 실행되는 함수</p>
+  <div class="cards fill">
+    <div class="card reveal" style="--i:0">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="18" cy="20" r="7"/><path d="M23 25l13 13"/><path d="M32 34l4-4 4 4-4 4z"/>
+      </svg>
+      <p class="body">로그인</p>
+      <p class="cap">폼 제출 처리</p>
+    </div>
+    <div class="card reveal" style="--i:1">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M32 8l8 8-20 20-10 2 2-10z"/><path d="M28 12l8 8"/>
+      </svg>
+      <p class="body">글쓰기</p>
+      <p class="cap">DB에 추가·수정</p>
+    </div>
+    <div class="card reveal" style="--i:2">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 14h28"/><path d="M19 14V9h10v5"/><path d="M14 14l2 26h16l2-26"/><path d="M21 21v12M27 21v12"/>
+      </svg>
+      <p class="body">삭제</p>
+      <p class="cap">DB에서 지우기</p>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 공통점은 "서버에 무언가를 보내서 바꾸는 일"입니다. 화면에 보여줄 데이터를 가져오는 게 아니라, 데이터를 바꾸는 쪽이라는 걸 기억해두세요. -->
+
+<!-- A-4. 로그인 폼 준비하기 -->
+<section class="slide">
+  <h2>로그인 폼 준비하기</h2>
+  <div class="fill">
+    <div class="code">
+      <p class="file">src/app/login/page.tsx</p>
+      <pre>export default function LoginPage() {
+  return (
+    &lt;form&gt;
+      &lt;input type="email" <span class="k">name="email"</span> required /&gt;
+      &lt;input type="password" <span class="k">name="password"</span> required /&gt;
+      &lt;button type="submit"&gt;Login&lt;/button&gt;
+    &lt;/form&gt;
+  );
+}</pre>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 평범한 HTML form입니다. 딱 하나만 봐두세요 — name. 서버에서 값을 꺼낼 때 이 이름을 그대로 씁니다. 스타일 클래스는 설명에 방해되니 다 뺐습니다. -->
+
+<!-- A-5. STEP 1 -->
+<section class="slide">
+  <p class="eyebrow">STEP 1</p>
+  <h2>서버에서 실행할 함수 만들기</h2>
+  <div class="fill">
+    <div class="code">
+      <p class="file">src/app/login/page.tsx</p>
+      <pre><span class="dim">export default function LoginPage() {</span>
+  const <span class="k">login</span> = async (<span class="k">formData: FormData</span>) =&gt; {
+
+  };
+
+<span class="dim">  return (
+    &lt;form&gt; ... &lt;/form&gt;
+  );
+}</span></pre>
+    </div>
+  </div>
+</section>
+<!-- 멘트: return 위에 함수를 하나 만듭니다. form이 보낸 값들이 formData라는 상자에 담겨 들어옵니다. 아직 아무 일도 하지 않는 빈 함수예요. -->
+
+<!-- A-6. STEP 2 -->
+<section class="slide">
+  <p class="eyebrow">STEP 2</p>
+  <h2>서버 전용 표시 붙이기</h2>
+  <p class="state">이 함수는 <span class="k">서버에서만</span> 실행하세요<br>라고 Next.js에 알리는 표시</p>
+  <div class="fill">
+    <div class="code">
+      <pre><span class="dim">  const login = async (formData: FormData) =&gt; {</span>
+    <span class="k">"use server";</span>
+<span class="dim">
+  };</span></pre>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 함수 본문 첫 줄에 "use server"를 씁니다. 이미 쓰고 있는 "use client"와 짝이 되는 표시예요. 이 한 줄이 붙는 순간 이 함수는 서버 전용이 되고, 코드도 브라우저로 내려가지 않습니다. 지금은 페이지와 같은 파일 안에 함수를 두고 있다는 점만 기억해두세요. -->
+
+<!-- A-7. STEP 3 -->
+<section class="slide">
+  <p class="eyebrow">STEP 3</p>
+  <h2>보내온 값 꺼내기</h2>
+  <p class="callout">console.log 자리에 실제로는 DB에서 회원을 확인하는 코드가 온다</p>
+  <div class="fill">
+    <div class="code">
+      <pre><span class="dim">  const login = async (formData: FormData) =&gt; {
+    "use server";</span>
+
+    const email = formData.<span class="k">get("email")</span>;
+    const password = formData.<span class="k">get("password")</span>;
+
+    console.log(email, password);
+<span class="dim">  };</span></pre>
+    </div>
+  </div>
+</section>
+<!-- 멘트: get 안에 쓰는 이름은 아까 input에 붙인 name과 똑같습니다. 하나라도 틀리면 null이 나와요. -->
+
+<!-- A-8. STEP 4 -->
+<section class="slide">
+  <p class="eyebrow">STEP 4</p>
+  <h2>form에 함수 연결하기</h2>
+  <div class="fill">
+    <div class="code">
+      <pre><span class="dim">  return (</span>
+    &lt;form <span class="k">action={login}</span>&gt;
+<span class="dim">      &lt;input type="email" name="email" required /&gt;
+      &lt;input type="password" name="password" required /&gt;
+      &lt;button type="submit"&gt;Login&lt;/button&gt;
+    &lt;/form&gt;
+  );</span></pre>
+    </div>
+  </div>
+</section>
+<!-- 멘트: onSubmit도, preventDefault도, fetch도 없습니다. action에 함수를 그대로 넘기면 끝입니다. -->
+
+<!-- A-9. 완성 코드 -->
+<section class="slide">
+  <h2>완성 코드</h2>
+  <div class="fill">
+    <div class="code compact">
+      <button class="copybtn"><span class="copy-text">복사</span><span class="done-text">Copied!</span></button>
+      <p class="file">src/app/login/page.tsx</p>
+      <pre>export default function LoginPage() {
+  const login = async (formData: FormData) =&gt; {
+    "use server";
+
+    const email = formData.get("email");
+    const password = formData.get("password");
+
+    console.log(email, password);
+  };
+
+  return (
+    &lt;form action={login}&gt;
+      &lt;input type="email" name="email" required /&gt;
+      &lt;input type="password" name="password" required /&gt;
+      &lt;button type="submit"&gt;Login&lt;/button&gt;
+    &lt;/form&gt;
+  );
+}</pre>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 전체 코드입니다. 파일 하나, 함수 하나. API 폴더도 주소도 만들지 않았습니다. -->
+
+<!-- A-10. 직접 해보기 -->
+<section class="slide">
+  <h2>직접 해보기</h2>
+  <div class="cards fill">
+    <div class="card reveal" style="--i:0"><p class="n">1</p><p class="body">저장</p><p class="cap">src/app/login/page.tsx</p></div>
+    <div class="card reveal" style="--i:1"><p class="n">2</p><p class="body">접속</p><p class="cap">localhost:3000/login</p></div>
+    <div class="card reveal" style="--i:2"><p class="n">3</p><p class="body">입력 후 Login</p><p class="cap">아무 이메일, 비밀번호</p></div>
+  </div>
+  <p class="callout inline reveal" style="--i:3">출력은 브라우저 F12 콘솔이 아니라 <b>VS Code 터미널</b>에 찍힙니다</p>
+</section>
+<!-- 멘트: npm run dev가 돌고 있어야 합니다. 브라우저 콘솔을 아무리 봐도 안 나와요. 터미널을 보세요. -->
+
+<!-- A-11. 여기서 좋은 점 -->
+<section class="slide">
+  <h2>여기서 좋은 점</h2>
+  <div class="cards fill">
+    <div class="card reveal" style="--i:0">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 28l-4 4a7 7 0 01-10-10l4-4"/><path d="M28 20l4-4a7 7 0 0110 10l-4 4"/><path d="M12 36l24-24"/>
+      </svg>
+      <p class="body">API 주소가 필요 없다</p>
+      <ul class="pts">
+        <li><span class="mono">route.ts</span> 파일 없음</li>
+        <li><span class="mono">/api/login</span> 주소 설계 없음</li>
+        <li><span class="mono">fetch</span> 호출 없음</li>
+      </ul>
+    </div>
+    <div class="card reveal" style="--i:1">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="11" y="21" width="26" height="18" rx="4"/><path d="M17 21v-6a7 7 0 0114 0v6"/><path d="M24 28v5"/>
+      </svg>
+      <p class="body">서버 코드가 브라우저에 없다</p>
+      <ul class="pts">
+        <li>DB 접속 정보 안 내려감</li>
+        <li>API 키 안 내려감</li>
+        <li>함수 본문이 브라우저 코드에 없음</li>
+      </ul>
+    </div>
+    <div class="card reveal" style="--i:2">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 14l-8 10 8 10"/><path d="M30 14l8 10-8 10"/>
+      </svg>
+      <p class="body">폼 코드가 짧아진다</p>
+      <ul class="pts">
+        <li><span class="mono">useState</span> 없음</li>
+        <li><span class="mono">onSubmit</span> · <span class="mono">preventDefault</span> 없음</li>
+        <li><span class="mono">fetch</span> · <span class="mono">JSON.stringify</span> 없음</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 두 번째는 직접 확인해볼 수 있습니다. 함수 안에 아무 문자열이나 넣고 F12 → Sources에서 검색해보세요. 안 나옵니다. 참고로 이건 진짜 form이라 브라우저 JS를 꺼도 제출이 됩니다. -->
+
+<!-- A-12. 정리 -->
+<section class="slide">
+  <h2>오늘의 정리</h2>
+  <div class="rows">
+    <div class="row"><p class="key mono">"use server"</p><p class="body">이 함수는 서버에서만 실행하라는 표시</p></div>
+    <div class="row"><p class="key mono">action={login}</p><p class="body">form에 함수를 그대로 연결 — 주소를 만들지 않는다</p></div>
+    <div class="row"><p class="key mono">formData.get("email")</p><p class="body">input의 name으로 값을 꺼낸다</p></div>
+  </div>
+</section>
+<!-- 멘트: 세 가지만 기억하세요. 다음 시간에는 "use client"가 붙은 화면에서 이 함수를 쓰려면 무엇이 달라지는지 봅니다. -->
+
+
+<!-- ============ B. 클라이언트 컴포넌트에서 쓰기 ============ -->
+
+<!-- B-1. 챕터 -->
+<section class="slide slide--center">
+  <h1 class="reveal">클라이언트 컴포넌트에서<br><span class="k">Server Actions</span> 쓰기</h1>
+  <p class="callout reveal" style="--i:1">화면에 상태나 이벤트가 필요해지면 페이지에 "use client"가 붙습니다</p>
+</section>
+<!-- 멘트: 지금까지는 페이지가 서버 컴포넌트였습니다. 그런데 입력값을 useState로 다루거나 onClick이 필요해지는 순간 "use client"를 붙이게 되죠. 그때부터 규칙이 하나 달라집니다. -->
+
+<!-- B-2. 규칙 (수동 1클릭) -->
+<section class="slide" data-manual>
+  <h2>"use client" 안에서는 안 된다</h2>
+  <div class="cards two fill">
+    <div class="card">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--red)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="16"/><path d="M17 17l14 14M31 17L17 31"/>
+      </svg>
+      <p class="label" style="color:var(--red)">page.tsx</p>
+      <p class="body">한 파일에 같이 두기</p>
+      <ul class="pts">
+        <li><span class="mono">"use client"</span> 파일 안에서 함수 정의</li>
+        <li>함수 첫 줄에 <span class="mono">"use server"</span></li>
+        <li>Next.js가 에러로 막는다</li>
+      </ul>
+      <div class="snip"><span class="c">// page.tsx</span>
+"use client";
+
+const login = async () =&gt; {
+  <span class="r">"use server";</span>
+};</div>
+    </div>
+    <div class="card reveal">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 10h12l3 4h13v24H10z"/><path d="M24 22v10M19 27h10"/>
+      </svg>
+      <p class="label">파일 2개</p>
+      <p class="body">함수를 따로 빼기</p>
+      <ul class="pts">
+        <li><span class="mono">src/actions/login.ts</span> 새로 만들기</li>
+        <li>파일 <b>최상단</b>에 <span class="mono">"use server"</span></li>
+        <li>화면에서는 <span class="mono">import</span> 해서 사용</li>
+      </ul>
+      <div class="snip"><span class="c">// actions/login.ts</span>
+<span class="k">"use server";</span>
+export const login = ...</div>
+      <div class="snip"><span class="c">// page.tsx</span>
+"use client";
+<span class="k">import { login }</span> from "@/actions/login";</div>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 왼쪽처럼 쓰면 실행되지 않습니다. 오른쪽처럼 파일을 나눠야 해요. 왜 그래야 하는지는 다음 장에서 봅니다. -->
+
+<!-- B-3. 파일을 나누는 이유 (수동 1클릭) -->
+<section class="slide" data-manual>
+  <h2>파일을 나누는 이유</h2>
+  <div class="fill fill--top">
+    <div class="stepline">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 8v22"/><path d="M15 23l9 9 9-9"/><path d="M10 38h28"/>
+      </svg>
+      <p class="t"><span class="mono k">"use client"</span> 파일은 브라우저로 통째로 내려간다</p>
+    </div>
+    <div class="stepline bad reveal">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--red)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="11" y="23" width="26" height="16" rx="4"/><path d="M17 23v-6a7 7 0 0111-5.6"/><path d="M33 8l6 8"/>
+      </svg>
+      <div>
+        <p class="t">그 안에 서버 함수를 두면 <span class="r">DB 접속 정보와 API 키도 같이 내려간다</span></p>
+        <p class="err">It is not allowed to define inline "use server" annotated Server Actions in Client Components.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 클릭 ① "use client"가 붙은 파일은 통째로 브라우저로 갑니다. ② 그 안에 서버 함수를 두면 DB 접속 정보까지 같이 노출되겠죠. 그래서 Next.js가 아예 막고 이런 에러를 냅니다. 그래서 파일을 나눠야 하는 거예요. -->
+
+<!-- B-4. STEP 1 -->
+<section class="slide">
+  <p class="eyebrow">STEP 1</p>
+  <h2>서버 함수 파일 만들기</h2>
+  <div class="fill">
+    <div class="code">
+      <p class="file">src/actions/login.ts</p>
+      <pre><span class="k">"use server";</span>
+
+<span class="k">export</span> const login = async (formData: FormData) =&gt; {
+<span class="dim">  const email = formData.get("email");
+  const password = formData.get("password");
+
+  console.log(email, password);</span>
+};</pre>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 함수 본문은 A에서 만든 것과 똑같습니다. 달라진 건 두 가지예요. "use server"가 함수 안이 아니라 파일 맨 위로 올라갔고, 다른 파일에서 쓰려고 export를 붙였습니다. -->
+
+<!-- B-5. STEP 2 -->
+<section class="slide">
+  <p class="eyebrow">STEP 2</p>
+  <h2>화면에서 불러 쓰기</h2>
+  <div class="fill">
+    <div class="code">
+      <p class="file">src/app/login/page.tsx</p>
+      <pre><span class="k">"use client";</span>
+
+<span class="k">import { login } from "@/actions/login";</span>
+
+<span class="dim">export default function LoginPage() {
+  return (
+    &lt;form action={login}&gt; ... &lt;/form&gt;
+  );
+}</span></pre>
+    </div>
+  </div>
+</section>
+<!-- 멘트: form에 연결하는 방법은 A와 똑같습니다. 함수를 import 해온다는 것만 달라졌어요. -->
+
+<!-- B-6. 완성 코드 (파일 탭 2개) -->
+<section class="slide">
+  <h2>완성 코드</h2>
+  <div class="tabs">
+    <button class="tab active" data-tab="0">actions/login.ts</button>
+    <button class="tab" data-tab="1">app/login/page.tsx</button>
+  </div>
+  <div class="fill">
+    <div class="panel active">
+      <div class="code compact">
+        <button class="copybtn"><span class="copy-text">복사</span><span class="done-text">Copied!</span></button>
+        <p class="file">src/actions/login.ts</p>
+        <pre>"use server";
+
+export const login = async (formData: FormData) =&gt; {
+  const email = formData.get("email");
+  const password = formData.get("password");
+
+  console.log(email, password);
+};</pre>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="code compact">
+        <button class="copybtn"><span class="copy-text">복사</span><span class="done-text">Copied!</span></button>
+        <p class="file">src/app/login/page.tsx</p>
+        <pre>"use client";
+
+import { login } from "@/actions/login";
+
+export default function LoginPage() {
+  return (
+    &lt;form action={login}&gt;
+      &lt;input type="email" name="email" required /&gt;
+      &lt;input type="password" name="password" required /&gt;
+      &lt;button type="submit"&gt;Login&lt;/button&gt;
+    &lt;/form&gt;
+  );
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 파일 두 개입니다. 탭을 눌러가며 보여주고, 각각 복사해서 붙여넣게 하세요. -->
+
+<!-- B-7. 직접 해보기 -->
+<section class="slide">
+  <h2>직접 해보기</h2>
+  <div class="cards fill">
+    <div class="card reveal" style="--i:0"><p class="n">1</p><p class="body">두 파일 저장</p><p class="cap">actions/login.ts · login/page.tsx</p></div>
+    <div class="card reveal" style="--i:1"><p class="n">2</p><p class="body">입력 후 Login</p><p class="cap">터미널 출력은 A와 똑같다</p></div>
+    <div class="card reveal" style="--i:2"><p class="n">3</p><p class="body">F12 → Network</p><p class="cap">POST 요청이 남는지 확인</p></div>
+  </div>
+</section>
+<!-- 멘트: 결과는 A와 같습니다. 다만 이번엔 Next.js가 대신 요청을 보내주기 때문에 Network 탭에 POST가 하나 잡혀요. 함수를 부른 것처럼 보여도 실제로는 서버와 통신한다는 걸 여기서 보여주세요. -->
+
+<!-- B-8. A와 B 정리 -->
+<section class="slide">
+  <h2>두 방식 정리</h2>
+  <div class="rows">
+    <div class="row"><p class="key">서버 컴포넌트</p><p class="body">함수 본문 첫 줄에 "use server" — 페이지와 같은 파일에 둘 수 있다</p></div>
+    <div class="row"><p class="key">클라이언트 컴포넌트</p><p class="body">파일 최상단에 "use server" — 반드시 별도 파일로 분리한다</p></div>
+    <div class="row"><p class="key mono">import { login }</p><p class="body">화면에서는 함수를 부르지만, 실행은 서버에서 된다</p></div>
+  </div>
+</section>
+<!-- 멘트: 어느 쪽이든 함수 본문은 서버에서만 돕니다. 다음 시간에는 "로그인 중..." 표시와 에러 메시지를 붙여봅니다. -->
+
+
+<!-- ============ C. 로딩·에러 메시지 보여주기 ============ -->
+
+<!-- C-1. 챕터 -->
+<section class="slide slide--center">
+  <h1 class="reveal">로그인 중, <span class="k">에러</span> 표시하기</h1>
+</section>
+<!-- 멘트: 지금 만든 폼은 눌러도 반응이 없죠. 서버는 일하고 있는데 사용자는 모릅니다. 이번엔 "처리 중"과 "실패·성공"을 화면에 보여줍니다. -->
+
+<!-- C-2. 만들 화면 -->
+<section class="slide">
+  <h2>만들 화면</h2>
+  <div class="cards fill">
+    <div class="card reveal" style="--i:0">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 8h18M15 40h18"/><path d="M17 8c0 8 7 10 7 16s-7 8-7 16"/><path d="M31 8c0 8-7 10-7 16s7 8 7 16"/>
+      </svg>
+      <p class="body">보내는 중</p>
+      <div class="prev off">로그인 중...</div>
+    </div>
+    <div class="card reveal" style="--i:1">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--red)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 9L5 40h38z"/><path d="M24 20v10M24 34h.01"/>
+      </svg>
+      <p class="body">실패</p>
+      <div class="prev bad">비밀번호는 8자 이상이어야 합니다.</div>
+    </div>
+    <div class="card reveal" style="--i:2">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--comment)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="16"/><path d="M16 24l6 6 11-12"/>
+      </svg>
+      <p class="body">성공</p>
+      <div class="prev ok">test@test.com님 환영합니다.</div>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 세 가지 상태를 만들 겁니다. 버튼을 누르면 잠기고, 실패하면 빨간 글씨, 성공하면 초록 글씨. -->
+
+<!-- C-3. STEP 1 -->
+<section class="slide">
+  <p class="eyebrow">STEP 1</p>
+  <h2>결과의 모양 정하기</h2>
+  <div class="fill">
+    <div class="code">
+      <p class="file">src/actions/login.ts</p>
+      <pre><span class="dim">"use server";</span>
+
+<span class="k">export type LoginState = {
+  message: string;
+  success: boolean;
+};</span></pre>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 서버가 화면에 돌려줄 결과의 모양을 먼저 정합니다. 보여줄 문구 하나, 성공인지 아닌지 하나. 이 두 개면 충분합니다. -->
+
+<!-- C-4. STEP 2 -->
+<section class="slide">
+  <p class="eyebrow">STEP 2</p>
+  <h2>함수 모양 바꾸기</h2>
+  <p class="callout">prevState는 지금 안 쓰지만, 첫 번째 자리는 비워둘 수 없다</p>
+  <div class="fill">
+    <div class="code">
+      <pre>export <span class="k">async function</span> login(
+  <span class="k">prevState: LoginState,</span>
+  formData: FormData
+)<span class="k">: Promise&lt;LoginState&gt;</span> {
+<span class="dim">  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+}</span></pre>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 인자가 하나 늘었습니다. 앞자리에 직전 결과가 들어오고, 뒤에 formData가 옵니다. 그리고 이 함수는 이제 LoginState를 돌려준다고 선언했습니다. -->
+
+<!-- C-5. STEP 3 -->
+<section class="slide">
+  <p class="eyebrow">STEP 3</p>
+  <h2>검사하고 결과 돌려주기</h2>
+  <p class="callout">1초 지연은 로딩을 눈으로 보려고 넣은 연습용 코드</p>
+  <div class="fill">
+    <div class="code">
+      <pre><span class="dim">  const password = formData.get("password") as string;</span>
+
+  <span class="k">await new Promise((resolve) =&gt; setTimeout(resolve, 1000));</span>
+
+  <span class="k">if (password.length &lt; 8) {
+    return { message: "비밀번호는 8자 이상이어야 합니다.", success: false };
+  }
+
+  return { message: `${email}님 환영합니다.`, success: true };</span></pre>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 검사에 걸리면 실패 결과를, 통과하면 성공 결과를 돌려줍니다. 화면에 보여줄 문구를 서버가 직접 만들어 보내는 거예요. -->
+
+<!-- C-6. 에러는 돌려준다 (수동 1클릭) -->
+<section class="slide" data-manual>
+  <h2>에러는 던지지 말고 돌려준다</h2>
+  <div class="cards two fill">
+    <div class="card">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--red)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="16"/><path d="M17 17l14 14M31 17L17 31"/>
+      </svg>
+      <p class="body"><span class="r">throw</span> 하면</p>
+      <ul class="pts">
+        <li>화면에는 메시지가 안 나온다</li>
+        <li>에러 화면으로 넘어간다</li>
+      </ul>
+      <div class="snip">if (password.length &lt; 8) {
+  <span class="r">throw new Error("8자 이상");</span>
+}</div>
+    </div>
+    <div class="card reveal">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="16"/><path d="M16 24l6 6 11-12"/>
+      </svg>
+      <p class="body"><span class="k">return</span> 하면</p>
+      <ul class="pts">
+        <li>값이 화면으로 돌아온다</li>
+        <li>빨간 글씨로 보여줄 수 있다</li>
+      </ul>
+      <div class="snip">if (password.length &lt; 8) {
+  <span class="k">return</span> { message: "8자 이상",
+           success: false };
+}</div>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 서버에서 던진 에러는 화면까지 오지 않습니다. 사용자에게 보여줄 메시지는 반드시 값으로 돌려주세요. -->
+
+<!-- C-7. STEP 4 (수동 3클릭) -->
+<section class="slide" data-manual>
+  <p class="eyebrow">STEP 4</p>
+  <h2>화면에서 받아 쓰기</h2>
+  <div class="fill fill--top">
+    <div class="code">
+      <p class="file">src/app/login/page.tsx</p>
+      <pre><span class="dim">import { useActionState } from "react";
+import { login, type LoginState } from "@/actions/login";
+
+const initialState: LoginState = { message: "", success: false };
+</span>
+  const <span class="k">[state, formAction, isPending]</span> =
+    <span class="k">useActionState(login, initialState)</span>;
+
+<span class="dim">  &lt;form action=</span><span class="k">{formAction}</span><span class="dim">&gt;</span></pre>
+    </div>
+    <div class="deflist">
+      <p class="li reveal"><span class="m">state</span><span>서버가 돌려준 결과 — message, success</span></p>
+      <p class="li reveal"><span class="m">formAction</span><span>form의 action에 연결할 함수</span></p>
+      <p class="li reveal"><span class="m">isPending</span><span>지금 보내는 중인지 — true / false</span></p>
+    </div>
+  </div>
+</section>
+<!-- 멘트: useActionState에 함수와 처음 상태를 넘기면 세 가지를 돌려줍니다. 클릭하며 하나씩 짚어주세요. form에는 login이 아니라 formAction을 연결한다는 게 포인트입니다. -->
+
+<!-- C-8. STEP 5 -->
+<section class="slide">
+  <p class="eyebrow">STEP 5</p>
+  <h2>버튼과 메시지에 연결하기</h2>
+  <div class="fill">
+    <div class="code">
+      <pre>      &lt;button type="submit" <span class="k">disabled={isPending}</span>&gt;
+        <span class="k">{isPending ? "로그인 중..." : "Login"}</span>
+      &lt;/button&gt;
+
+      <span class="k">{state.message &amp;&amp; (
+        &lt;p style={{ color: state.success ? "green" : "red" }}&gt;
+          {state.message}
+        &lt;/p&gt;
+      )}</span></pre>
+    </div>
+  </div>
+</section>
+<!-- 멘트: isPending 하나로 버튼을 잠그고 문구도 바꿉니다. 로딩 상태를 따로 useState로 관리하지 않아도 되는 이유가 이것입니다. -->
+
+<!-- C-9. 완성 코드 (파일 탭 2개) -->
+<section class="slide">
+  <h2>완성 코드</h2>
+  <div class="tabs">
+    <button class="tab active" data-tab="0">actions/login.ts</button>
+    <button class="tab" data-tab="1">app/login/page.tsx</button>
+  </div>
+  <div class="fill">
+    <div class="panel active">
+      <div class="code compact">
+        <button class="copybtn"><span class="copy-text">복사</span><span class="done-text">Copied!</span></button>
+        <p class="file">src/actions/login.ts</p>
+        <pre>"use server";
+
+export type LoginState = {
+  message: string;
+  success: boolean;
+};
+
+export async function login(
+  prevState: LoginState,
+  formData: FormData
+): Promise&lt;LoginState&gt; {
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+
+  await new Promise((resolve) =&gt; setTimeout(resolve, 1000));
+
+  if (password.length &lt; 8) {
+    return { message: "비밀번호는 8자 이상이어야 합니다.", success: false };
+  }
+
+  return { message: `${email}님 환영합니다.`, success: true };
+}</pre>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="code compact">
+        <button class="copybtn"><span class="copy-text">복사</span><span class="done-text">Copied!</span></button>
+        <p class="file">src/app/login/page.tsx</p>
+        <pre>"use client";
+
+import { useActionState } from "react";
+import { login, type LoginState } from "@/actions/login";
+
+const initialState: LoginState = { message: "", success: false };
+
+export default function LoginPage() {
+  const [state, formAction, isPending] = useActionState(login, initialState);
+
+  return (
+    &lt;form action={formAction}&gt;
+      &lt;input type="email" name="email" required /&gt;
+      &lt;input type="password" name="password" required /&gt;
+      &lt;button type="submit" disabled={isPending}&gt;
+        {isPending ? "로그인 중..." : "Login"}
+      &lt;/button&gt;
+
+      {state.message &amp;&amp; (
+        &lt;p style={{ color: state.success ? "green" : "red" }}&gt;{state.message}&lt;/p&gt;
+      )}
+    &lt;/form&gt;
+  );
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 두 파일 모두 복사해서 그대로 덮어쓰게 하세요. -->
+
+<!-- C-10. 직접 해보기 -->
+<section class="slide">
+  <h2>직접 해보기</h2>
+  <div class="cards fill">
+    <div class="card reveal" style="--i:0"><p class="n">1</p><p class="body">1234 입력</p><div class="prev bad">비밀번호는 8자 이상이어야 합니다.</div></div>
+    <div class="card reveal" style="--i:1"><p class="n">2</p><p class="body">12345678 입력</p><div class="prev ok">test@test.com님 환영합니다.</div></div>
+    <div class="card reveal" style="--i:2"><p class="n">3</p><p class="body">누르는 1초 동안</p><div class="prev off">로그인 중...</div></div>
+  </div>
+</section>
+<!-- 멘트: 세 가지가 다 보이면 성공입니다. 버튼이 잠기는 1초를 꼭 같이 보게 하세요. -->
+
+<!-- C-11. 이건 못 한다 -->
+<section class="slide">
+  <h2>이건 못 한다</h2>
+  <p class="callout">화면에 버튼이 없어도 호출은 가능 — 검사는 함수 안에서</p>
+  <div class="cards fill">
+    <div class="card reveal" style="--i:0">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 24h24"/><path d="M27 17l7 7-7 7"/><path d="M40 12v24"/>
+      </svg>
+      <p class="body">POST만 가능</p>
+      <ul class="pts">
+        <li>단순 조회(GET)에는 안 맞음</li>
+        <li>데이터를 바꾸는 일에만</li>
+      </ul>
+    </div>
+    <div class="card reveal" style="--i:1">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="16" y="6" width="16" height="36" rx="4"/><path d="M22 36h4"/>
+      </svg>
+      <p class="body">외부와 공유 불가</p>
+      <ul class="pts">
+        <li>모바일 앱에서는 못 부름</li>
+        <li>그럴 땐 Route Handler</li>
+      </ul>
+    </div>
+    <div class="card reveal" style="--i:2">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="12" width="32" height="24" rx="4"/><path d="M8 20h32"/><path d="M14 16h.01"/>
+      </svg>
+      <p class="body">Next.js 전용</p>
+      <ul class="pts">
+        <li>다른 프레임워크로 옮기기 어려움</li>
+        <li>Next.js 안에서만 쓰는 방식</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 마지막으로 보안 한 가지. 버튼을 화면에서 숨겨도 그 함수는 여전히 불릴 수 있습니다. 로그인 여부나 권한 확인은 반드시 함수 안에서 하세요. -->
+
+<!-- C-12. 어느 쪽을 쓸까 (수동 3클릭) -->
+<section class="slide" data-manual>
+  <h2>어느 쪽을 쓸까</h2>
+  <div class="cards fill">
+    <div class="card">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="10" width="30" height="28" rx="4"/><path d="M15 19h18M15 26h18"/><path d="M15 33h8"/>
+      </svg>
+      <p class="body">로그인 폼 제출</p>
+      <p class="verdict reveal">Server Actions</p>
+    </div>
+    <div class="card">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 14h28M10 24h28M10 34h28"/><circle cx="6" cy="14" r="1.6"/><circle cx="6" cy="24" r="1.6"/><circle cx="6" cy="34" r="1.6"/>
+      </svg>
+      <p class="body">게시글 목록 가져오기</p>
+      <p class="verdict reveal">Route Handler</p>
+    </div>
+    <div class="card">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="16" y="6" width="16" height="36" rx="4"/><path d="M22 36h4"/><path d="M6 24h6M36 24h6"/>
+      </svg>
+      <p class="body">모바일 앱과 API 공유</p>
+      <p class="verdict reveal">Route Handler</p>
+    </div>
+  </div>
+</section>
+<!-- 멘트: 먼저 학생들에게 물어보고 클릭하세요. 기준은 하나입니다. 데이터를 바꾸는 일이면 Server Actions, 가져오거나 밖에 열어줘야 하면 Route Handler. -->
+
+<!-- C-13. 정리 -->
+<section class="slide">
+  <h2>오늘의 정리</h2>
+  <div class="rows">
+    <div class="row"><p class="key mono">useActionState</p><p class="body">결과와 전송 중 여부를 한 번에 받아온다</p></div>
+    <div class="row"><p class="key mono">isPending</p><p class="body">버튼을 잠그고 "로그인 중..." 표시 — 따로 관리할 필요 없다</p></div>
+    <div class="row"><p class="key">에러는 return</p><p class="body">throw는 화면에 안 보인다. 값으로 돌려줘야 보여줄 수 있다</p></div>
+  </div>
+</section>
+<!-- 멘트: 세 가지만 기억하면 됩니다. 다음 단계는 DB 연결과 revalidatePath로 화면을 갱신하는 부분입니다. -->
+
+<script>
+// 화면에 들어오면 슬라이드 활성화 (data-manual 슬라이드는 제외)
+const slides = [...document.querySelectorAll('.slide')];
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting && !e.target.hasAttribute('data-manual')) e.target.classList.add('in');
+}), { threshold: 0.4 });
+slides.forEach(s => io.observe(s));
+
+// 현재 슬라이드: offsetTop 기준 (화면보다 긴 슬라이드가 있어도 어긋나지 않음)
+const current = () => {
+  const y = window.scrollY + window.innerHeight * 0.5;
+  let i = 0;
+  slides.forEach((s, n) => { if (s.offsetTop <= y) i = n; });
+  return i;
+};
+
+addEventListener('keydown', e => {
+  if (['ArrowRight', ' ', 'PageDown'].includes(e.key)) {
+    e.preventDefault();
+    const s = slides[current()];
+    const next = s?.querySelector('.reveal:not(.in)');
+    if (s?.hasAttribute('data-manual') && next) return next.classList.add('in');
+    slides[current() + 1]?.scrollIntoView();
+  }
+  if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); slides[current() - 1]?.scrollIntoView(); }
+});
+
+// 수동 슬라이드: 터치/클릭으로도 한 단계씩 (모바일 대응)
+document.querySelectorAll('.slide[data-manual]').forEach(s => {
+  s.addEventListener('click', () => s.querySelector('.reveal:not(.in)')?.classList.add('in'));
+});
+
+// 파일 탭 전환
+document.querySelectorAll('.tabs').forEach(tabs => {
+  const slide = tabs.closest('.slide');
+  const panels = slide.querySelectorAll('.panel');
+  tabs.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      panels.forEach(pn => pn.classList.remove('active'));
+      tab.classList.add('active');
+      panels[+tab.dataset.tab].classList.add('active');
+    });
+  });
+});
+
+// 완성 코드 복사 버튼
+document.querySelectorAll('.copybtn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const text = btn.parentElement.querySelector('pre').innerText;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy'); ta.remove();
+    }
+    btn.classList.add('done');
+    setTimeout(() => btn.classList.remove('done'), 1500);
+  });
+});
+</script>
+</body>
+</html>
