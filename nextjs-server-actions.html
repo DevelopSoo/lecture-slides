@@ -783,40 +783,40 @@ export default function LoginPage() {
 </section>
 <!-- 멘트: 검사에 걸리면 실패 결과를, 통과하면 성공 결과를 돌려줍니다. 화면에 보여줄 문구를 서버가 직접 만들어 보내는 거예요. -->
 
-<!-- C-6. 에러는 돌려준다 (수동 1클릭) -->
+<!-- C-6. 화면에 보여줄 정보를 돌려준다 (수동 1클릭) -->
 <section class="slide" data-manual>
-  <h2>에러는 던지지 말고 돌려준다</h2>
+  <h2>화면에 보여줄 정보를 돌려준다</h2>
+  <p class="state">화면에 무엇을 보여줄지<br><span class="k">서버가 직접 정해서</span> 돌려준다</p>
   <div class="cards two fill">
     <div class="card">
-      <svg viewBox="0 0 48 48" fill="none" stroke="var(--red)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="24" cy="24" r="16"/><path d="M17 17l14 14M31 17L17 31"/>
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 9L5 40h38z"/><path d="M24 20v10M24 34h.01"/>
       </svg>
-      <p class="body"><span class="r">throw</span> 하면</p>
+      <p class="body">검사에 걸렸을 때</p>
       <ul class="pts">
-        <li>화면에는 메시지가 안 나온다</li>
-        <li>에러 화면으로 넘어간다</li>
+        <li>무엇을 고쳐야 하는지 알려준다</li>
+        <li><span class="mono">success: false</span> → 빨간 글씨</li>
       </ul>
-      <div class="snip">if (password.length &lt; 8) {
-  <span class="r">throw new Error("8자 이상");</span>
-}</div>
+      <div class="snip"><span class="k">return</span> { message: "비밀번호는 8자 이상이어야 합니다.",
+         success: false };</div>
+      <div class="prev bad">비밀번호는 8자 이상이어야 합니다.</div>
     </div>
     <div class="card reveal">
       <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="24" cy="24" r="16"/><path d="M16 24l6 6 11-12"/>
       </svg>
-      <p class="body"><span class="k">return</span> 하면</p>
+      <p class="body">통과했을 때</p>
       <ul class="pts">
-        <li>값이 화면으로 돌아온다</li>
-        <li>빨간 글씨로 보여줄 수 있다</li>
+        <li>무엇이 됐는지 알려준다</li>
+        <li><span class="mono">success: true</span> → 초록 글씨</li>
       </ul>
-      <div class="snip">if (password.length &lt; 8) {
-  <span class="k">return</span> { message: "8자 이상",
-           success: false };
-}</div>
+      <div class="snip"><span class="k">return</span> { message: `${email}님 환영합니다.`,
+         success: true };</div>
+      <div class="prev ok">test@test.com님 환영합니다.</div>
     </div>
   </div>
 </section>
-<!-- 멘트: 서버에서 던진 에러는 화면까지 오지 않습니다. 사용자에게 보여줄 메시지는 반드시 값으로 돌려주세요. -->
+<!-- 멘트: 왼쪽 먼저 보여주고 클릭해서 오른쪽을 띄우세요. message는 화면에 그대로 찍힐 문구, success는 그 문구를 무슨 색으로 보여줄지 정하는 값입니다. -->
 
 <!-- C-7. STEP 4 (수동 3클릭) -->
 <section class="slide" data-manual>
@@ -1019,7 +1019,7 @@ export default function LoginPage() {
   <div class="rows">
     <div class="row"><p class="key mono">useActionState</p><p class="body">결과와 전송 중 여부를 한 번에 받아온다</p></div>
     <div class="row"><p class="key mono">isPending</p><p class="body">버튼을 잠그고 "로그인 중..." 표시 — 따로 관리할 필요 없다</p></div>
-    <div class="row"><p class="key">에러는 return</p><p class="body">throw는 화면에 안 보인다. 값으로 돌려줘야 보여줄 수 있다</p></div>
+    <div class="row"><p class="key mono">return { message, success }</p><p class="body">화면에 보여줄 문구를 서버가 정해서 돌려준다</p></div>
   </div>
 </section>
 <!-- 멘트: 세 가지만 기억하면 됩니다. 다음 단계는 DB 연결과 revalidatePath로 화면을 갱신하는 부분입니다. -->
